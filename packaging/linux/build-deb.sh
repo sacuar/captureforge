@@ -5,15 +5,16 @@ VERSION="$(sed -nE 's/.*project\(CaptureForge VERSION ([0-9.]+).*/\1/p' CMakeLis
 test -n "$VERSION" || { echo "Missing CMake project version" >&2; exit 1; }
 STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
-mkdir -p "$STAGE/usr/bin" "$STAGE/DEBIAN" "$STAGE/usr/share/applications" "$STAGE/usr/share/icons/hicolor/64x64/apps" installer/linux
-install -m 755 build-ubuntu/CaptureForge "$STAGE/usr/bin/captureforge"
+mkdir -p "$STAGE/opt/captureforge" "$STAGE/DEBIAN" "$STAGE/usr/share/applications" "$STAGE/usr/share/icons/hicolor/64x64/apps" installer/linux
+install -m 755 build-ubuntu/CaptureForge "$STAGE/opt/captureforge/CaptureForge"
+install -m 644 resources/camera.png "$STAGE/opt/captureforge/camera.png"
 install -m 644 resources/camera.png "$STAGE/usr/share/icons/hicolor/64x64/apps/captureforge.png"
 cat > "$STAGE/usr/share/applications/captureforge.desktop" <<'EOF'
 [Desktop Entry]
 Type=Application
 Name=CaptureForge
 Comment=Capture, annotate and recognise text
-Exec=/usr/bin/captureforge
+Exec=/opt/captureforge/CaptureForge
 Icon=captureforge
 Terminal=false
 Categories=Graphics;Utility;
