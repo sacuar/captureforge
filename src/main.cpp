@@ -31,7 +31,7 @@ int main(int argc,char *argv[]){
         if(app.arguments().contains("--background"))return 0;
         QLocalSocket existing;existing.connectToServer(endpoint);
         if(existing.waitForConnected(1500)){existing.write("show");existing.flush();existing.waitForBytesWritten(1000);}
-        else QMessageBox::information(nullptr,"CaptureForge","CaptureForge is already running. Open it from the Windows system tray.");
+        else QMessageBox::information(nullptr,"CaptureForge","CaptureForge is already running. Open its existing window or system tray.");
         return 0;
     }
     Controller controller;
