@@ -29,6 +29,15 @@ QNetworkRequest request(const QUrl &url){QNetworkRequest r(url);r.setRawHeader("
 }
 Updater::Updater(QObject *parent):QObject(parent){}
 void Updater::check(bool manual){
+#ifdef Q_OS_LINUX
+ if (manual) {
+   if (QMessageBox::question(nullptr,"Ubuntu updates",
+       "Ubuntu packages are available from the official Releases page. Open it now?")
+       == QMessageBox::Yes)
+     QDesktopServices::openUrl(QUrl(repo));
+ }
+ return;
+#endif
  if(busy)return;busy=true;
  auto *reply=network.get(request(QUrl("https://api.github.com/repos/sacuar/captureforge/releases/latest")));
  connect(reply,&QNetworkReply::finished,this,[this,reply,manual]{
