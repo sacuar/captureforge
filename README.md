@@ -32,7 +32,13 @@ Open **[GitHub Releases](https://github.com/sacuar/captureforge/releases)**, cho
 
 ## Screenshots and first look
 
-A verified screenshot or demonstration will be added after a successful Windows build. The banner above is branding artwork, **not** a screenshot of the application.
+### Capture → annotate → recognise text
+
+**CaptureForge brings region capture, annotation and local Tesseract OCR into one workflow.** Select a region, draw or crop in the image editor, then extract text without uploading your screenshot to a cloud OCR provider.
+
+For an authentic view of the current application, use the [CaptureForge Windows release](https://github.com/sacuar/captureforge/releases/tag/v1.0.2) and run the editor. The GitHub Actions builds confirm application startup and OCR self-testing; they do not provide a full, verified editor screenshot yet.
+
+> The promotional CaptureForge concept image is illustrative, not a capture of the existing interface. A genuine in-app screenshot will be added when a verified capture is available.
 
 ## Get involved
 
