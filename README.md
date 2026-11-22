@@ -18,6 +18,10 @@
 - Run local OCR with Tesseract or an available Windows OCR fallback.
 - Work with desktop hotkeys, a tray launcher and compact editor controls.
 
+## Ubuntu build
+
+**Ubuntu 24.04 x64 (X11 preview):** Native Qt/C++ `.deb` with Tesseract OCR. Screen capture targets X11; Wayland desktop capture is not supported yet and requires the appropriate portal integration. [Ubuntu install guide](packaging/linux/README.md) · [Ubuntu workflow](https://github.com/sacuar/captureforge/actions/workflows/ubuntu-build.yml).
+
 ## Install / try
 
 Open **[GitHub Releases](https://github.com/sacuar/captureforge/releases)**, choose the latest suitable Windows asset, review its release notes and known limitations, and follow the installer instructions. If no verified installer is available, use the documented source-build instructions below. Download only from the official project release page.
