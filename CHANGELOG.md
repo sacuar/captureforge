@@ -1,3 +1,12 @@
+# 1.0.1
+
+- Optional installation maintenance wizard and Start menu tool.
+- Search old builds, installers, folders, running copies and app registrations.
+- Explicit Recycle Bin removal of selected old compiled folders, with installation, source project and link protection.
+- Backup before removal of eligible missing-target startup entries.
+- Single-instance lock and activation of existing window.
+- Retain bundled Tesseract recognition test.
+
 # CaptureForge 1.0.0 development candidate
 - Added a normal desktop launcher with capture, OCR, settings, add-ons and updates.
 - Added bundled Tesseract OCR with explicit language-data path and Windows OCR fallback.

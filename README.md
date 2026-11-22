@@ -17,3 +17,6 @@ Tray > Add-ons > Manage add-ons. External DLLs are stored in the user app-data a
 
 ## Status
 Source package prepared, Windows C++ compilation/installer/recognition tests not verified in this environment. Do not present as a certified or signed release. See THIRD_PARTY_NOTICES.md before distribution.
+
+## Installation maintenance (1.0.1)
+During setup, choose **Review previous builds → Scan and review old builds**. The same tool is installed in the Start menu as **CaptureForge maintenance**. Scan common locations, fixed drives or a specific folder; inspect registry entries and running copies. Recycle selected old files or compiled folders containing CaptureForge.exe, subject to safety checks. Installed locations, source projects and linked folders are protected; review contents first. Use Windows Installed apps to uninstall registered older versions. Stale per-user startup entries are backed up before removal. New CaptureForge launches reuse the existing session; legacy binaries may still run separately until removed. Tesseract retains its installation-time recognition test. No automatic deletion or registry sweeping.

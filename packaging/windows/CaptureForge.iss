@@ -1,5 +1,5 @@
 #ifndef AppVersion
-#define AppVersion "1.0.0"
+#define AppVersion "1.0.1"
 #endif
 [Setup]
 AppId={{C77C873F-687A-43C2-A438-5D72E24B1BB1}
@@ -22,6 +22,7 @@ RestartApplications=no
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
+DisableWelcomePage=no
 [Tasks]
 Name: "desktopicon"; Description: "Create a desktop shortcut"; Flags: unchecked
 Name: "startup"; Description: "Start CaptureForge when I sign in"; Flags: unchecked
@@ -50,7 +51,7 @@ procedure InitializeWizard;
 var Page: TWizardPage; Info: TNewStaticText;
 begin
   Page := CreateCustomPage(wpSelectDir, 'Review previous builds', 'Optional maintenance before installation');
-  Info := TNewStaticText.Create(Page); Info.Parent := Page.Surface; Info.Width := Page.SurfaceWidth; Info.WordWrap := True; Info.Caption := 'Find old builds, running copies and startup registrations. Nothing is removed automatically. Review matches and keep your project files and settings.';
+  Info := TNewStaticText.Create(Page); Info.Parent := Page.Surface; Info.Width := Page.SurfaceWidth; Info.WordWrap := True; Info.Caption := 'Find old builds, running copies and startup registrations. Review and recycle selected obsolete build files or compiled folders. Nothing is removed automatically.';
   MaintenanceButton := TNewButton.Create(Page); MaintenanceButton.Parent := Page.Surface; MaintenanceButton.Top := ScaleY(56); MaintenanceButton.Width := ScaleX(235); MaintenanceButton.Caption := 'Scan and review old builds...'; MaintenanceButton.OnClick := @OpenMaintenance;
 end;
 

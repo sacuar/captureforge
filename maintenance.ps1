@@ -8,7 +8,7 @@ $regex='(?i)^(?:'+$pattern+')(?:[ _.-]*(?:v(?:ersion)?[ _.-]*)?\d[\w.-]*|[ _-]*(
 $form=New-Object Windows.Forms.Form
 $form.Text="$App - Installation maintenance";$form.Width=1100;$form.Height=650;$form.StartPosition='CenterScreen'
 $form.Font=New-Object Drawing.Font('Segoe UI',10)
-$top=New-Object Windows.Forms.FlowLayoutPanel;$top.Dock='Top';$top.Height=82;$top.WrapContents=$true
+$top=New-Object Windows.Forms.FlowLayoutPanel;$top.Dock='Top';$top.Height=110;$top.WrapContents=$true
 $label=New-Object Windows.Forms.Label;$label.AutoSize=$true;$label.Text='Review possible old builds and registrations. Nothing is removed automatically.'
 [void]$top.Controls.Add($label)
 $status=New-Object Windows.Forms.Label;$status.Dock='Bottom';$status.Height=30;$status.Text='Choose a scan. A matching name is not proof of ownership.'
@@ -89,6 +89,54 @@ Button 'Recycle selected old file' {
   if(@(Get-Process -ErrorAction SilentlyContinue|Where-Object{try{$_.Path -eq $p}catch{$false}}).Count){throw 'Close this running copy first.'}
   if([Windows.Forms.MessageBox]::Show("Move ONLY this file to the Recycle Bin? Review its path. $p",'Confirm old build','YesNo','Warning') -eq 'Yes'){
    [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteFile($p,'OnlyErrorDialogs','SendToRecycleBin','ThrowException');$grid.Rows.Remove($grid.CurrentRow)
+  }
+ }catch{[void][Windows.Forms.MessageBox]::Show($_.Exception.Message,'Not removed')}
+}
+Button 'Recycle old build folder' {
+ if(!$grid.CurrentRow -or $grid.CurrentRow.Cells[0].Value -ne 'Possible app folder'){return}
+ try{
+  $p=[IO.Path]::GetFullPath([string]$grid.CurrentRow.Cells[2].Value).TrimEnd('\')
+  if(!(Test-Path -LiteralPath $p -PathType Container)){throw 'Folder no longer exists.'}
+  if([IO.Path]::GetFileName($p) -notmatch $regex){throw 'Folder name does not match the app.'}
+  $protected=@($ProtectPath,$env:ProgramFiles,[Environment]::GetEnvironmentVariable('ProgramFiles(x86)'),$env:WINDIR,(Join-Path $env:LOCALAPPDATA 'Programs'),$env:ProgramData)
+  foreach($r in @('HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*','HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*','HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*')){
+   foreach($v in @(Get-ItemProperty $r -ErrorAction SilentlyContinue)){if($v.InstallLocation){$protected+=$v.InstallLocation}}
+  }
+  $fullPrefix=$p+'\'
+  foreach($root in $protected|Where-Object{$_}){
+   try{$r=[IO.Path]::GetFullPath([Environment]::ExpandEnvironmentVariables($root.Trim('"'))).TrimEnd('\')}catch{continue}
+   if($p.Equals($r,[StringComparison]::OrdinalIgnoreCase) -or $fullPrefix.StartsWith($r+'\',[StringComparison]::OrdinalIgnoreCase) -or ($r+'\').StartsWith($fullPrefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Protected installation or its parent. Use the application uninstaller.'}
+  }
+  # Only compiled app folders, not source roots, installers or arbitrary same-name folders.
+  $exe=Join-Path $p 'CaptureForge.exe'
+  if(!(Test-Path -LiteralPath $exe -PathType Leaf)){throw 'No CaptureForge.exe directly inside this folder. Review this folder manually in Explorer.'}
+  foreach($process in Get-Process -ErrorAction SilentlyContinue){
+   try{$running=$process.Path}catch{$running=$null}
+   if($running -and $running.StartsWith($fullPrefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Close all running programs from this folder before removal.'}
+  }
+  $todo=New-Object 'System.Collections.Generic.Stack[string]';$todo.Push($p);$visited=0
+  while($todo.Count){
+   $dir=$todo.Pop()
+   $attrs=[IO.File]::GetAttributes($dir)
+   if(($attrs -band [IO.FileAttributes]::ReparsePoint) -ne 0){throw 'Folder contains a junction or symbolic link. Review manually.'}
+   $visited++
+   if($visited -gt 20000){throw 'Folder is too large to inspect safely. Review manually.'}
+   foreach($item in [IO.Directory]::EnumerateFileSystemEntries($dir)){
+    $visited++
+    if($visited -gt 20000){throw 'Folder is too large to inspect safely. Review manually.'}
+    $name=[IO.Path]::GetFileName($item)
+    $attrs=[IO.File]::GetAttributes($item)
+    if(($attrs -band [IO.FileAttributes]::ReparsePoint) -ne 0){throw 'Folder contains a link. Review manually.'}
+    if($name -in @('.git','CMakeLists.txt','src','pyproject.toml','unins000.exe','unins001.exe')){throw 'Source project or registered installer detected. Review manually.'}
+    if(($attrs -band [IO.FileAttributes]::Directory) -ne 0){$todo.Push($item)}
+   }
+  }
+  # Inspect ancestor links as well, so aliases cannot bypass protected paths.
+  $parent=[IO.DirectoryInfo]::new($p)
+  while($parent){if(($parent.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0){throw 'A parent folder is a link. Review manually.'};$parent=$parent.Parent}
+  if([Windows.Forms.MessageBox]::Show("Recycle this ENTIRE build folder and all its contents? Review it in Explorer first. Any personal files inside will also move to the Recycle Bin. $p",'Confirm old build folder','YesNo','Warning') -eq 'Yes'){
+   [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteDirectory($p,'OnlyErrorDialogs','SendToRecycleBin','ThrowException')
+   $grid.Rows.Remove($grid.CurrentRow)
   }
  }catch{[void][Windows.Forms.MessageBox]::Show($_.Exception.Message,'Not removed')}
 }
