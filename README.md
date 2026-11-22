@@ -1,7 +1,42 @@
-# CaptureForge
-**Capture, annotate, recognise, edit.**
+<div align="center">
 
-Windows 10/11 x64 desktop capture tool, built in native C++17 / Qt 6. Version 1.0.0 development candidate.
+![CaptureForge banner](assets/brand-cover.svg)
+
+# CaptureForge
+
+**A Windows capture workspace for screenshots, annotations and local text recognition.**
+
+[![Windows](https://img.shields.io/badge/platform-Windows%2010%2F11-2563eb)](https://github.com/sacuar/captureforge#install--try) [![Latest release](https://img.shields.io/github/v/release/sacuar/captureforge?label=latest%20release)](https://github.com/sacuar/captureforge/releases/latest) [![Issues](https://img.shields.io/github/issues/sacuar/captureforge)](https://github.com/sacuar/captureforge/issues)
+
+**[DOWNLOAD / RELEASES](https://github.com/sacuar/captureforge/releases)** · **[VIEW SOURCE](https://github.com/sacuar/captureforge)** · [More SACUAR apps](https://github.com/sacuar)
+
+</div>
+
+## Why use CaptureForge?
+
+- Capture a region or monitor, then crop, rotate, annotate and save.
+- Run local OCR with Tesseract or an available Windows OCR fallback.
+- Work with desktop hotkeys, a tray launcher and compact editor controls.
+
+## Install / try
+
+Open **[GitHub Releases](https://github.com/sacuar/captureforge/releases)**, choose the latest suitable Windows asset, review its release notes and known limitations, and follow the installer instructions. If no verified installer is available, use the documented source-build instructions below. Download only from the official project release page.
+
+**Development candidate:** Native C++/Qt Windows compilation, installer and OCR regression tests are not yet independently verified here. Review build results before installing; don't treat this page as a certified stable release.
+
+**Licence:** No licence file was found in this audit. Public source visibility does not itself grant permission to redistribute or modify the code.
+
+## Screenshots and first look
+
+A verified screenshot or demonstration will be added after a successful Windows build. The banner above is branding artwork, **not** a screenshot of the application.
+
+## Get involved
+
+[Development notes](CHANGELOG.md) · [Report a bug](https://github.com/sacuar/captureforge/issues/new) · [Source code](https://github.com/sacuar/captureforge). Please report your Windows version, application version and steps to reproduce. Screenshots of reproducible issues help.
+
+---
+
+## Detailed documentation
 
 ## Features
 Desktop launcher, region capture, multi-monitor selection, global hotkeys, floating camera button, system tray, image crop/pen/rotation/flip/undo, text editor, local OCR, configurable themes and trusted native add-ons. Tesseract is preferred; Windows OCR remains a fallback. Built-in OCR is processed off the UI thread. English is bundled; other language selection is not implemented.
