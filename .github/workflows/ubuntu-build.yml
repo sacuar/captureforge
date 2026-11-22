@@ -15,7 +15,7 @@ on:
       - 'packaging/linux/**'
       - '.github/workflows/ubuntu-build.yml'
 permissions:
-  contents: read
+  contents: write
 jobs:
   build:
     runs-on: ubuntu-24.04
@@ -38,6 +38,13 @@ jobs:
           xvfb-run -a ./build-ubuntu/CaptureForge --smoke-test
       - name: Build Ubuntu package
         run: bash packaging/linux/build-deb.sh
+      - name: Publish Ubuntu package to existing versioned GitHub release
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view v1.0.2 >/dev/null
+          gh release upload v1.0.2 installer/linux/*.deb installer/linux/*.sha256
       - uses: actions/upload-artifact@v4
         with:
           name: CaptureForge-Ubuntu-24.04-amd64
