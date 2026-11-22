@@ -176,13 +176,24 @@ void Controller::openTextEditor() {
 }
 
 void Controller::capture() {
+#ifdef Q_OS_LINUX
+    // QScreen::grabWindow(0) cannot bypass Wayland's capture permissions.
+    // Never produce a black screenshot or imply a successful capture.
+    if (QGuiApplication::platformName().contains("wayland", Qt::CaseInsensitive)) {
+        QMessageBox::information(nullptr, "Capture on Wayland",
+            "Direct screen capture is restricted by Wayland. "
+            "Run an X11 desktop session for region capture. "
+            "Text editing and OCR of existing images are still available.");
+        return;
+    }
+#endif
     if (overlay || capturePending)
         return;
     capturePending=true;
 
     floating->hide();
     if(home)home->hide();
-    // Give Windows time to remove the floating button from the compositor before
+    // Give the compositor time to remove the floating button before
     // the desktop snapshot is taken.
     QTimer::singleShot(180, this, [this] {
         capturePending=false;
@@ -258,14 +269,14 @@ void Controller::showPluginStatus() {
 
     QString text = QString("Plugin folder:\n%1\n\nLoaded:\n%2")
         .arg(QDir::toNativeSeparators(pluginManager->pluginDirectory()),
-             loaded.isEmpty() ? "(none — built-in Windows OCR is still available)" : loaded.join("\n"));
+             loaded.isEmpty() ? "(none — Tesseract OCR may be available)" : loaded.join("\n"));
 
     if (!errors.isEmpty())
         text += "\n\nLoad errors:\n" + errors.join("\n");
 
     QDialog d;d.setWindowTitle("CaptureForge Add-ons");d.resize(580,400);QVBoxLayout layout(&d);
     layout.addWidget(new QLabel("<h2>Available providers</h2>"));
-    auto *info=new QPlainTextEdit(QString("Tesseract OCR: %1\nWindows OCR: built-in fallback\nImage editor: built in\nText editor: built in\n\n").arg(Ocr::executable().isEmpty()?"Not detected":Ocr::executable())+text);info->setReadOnly(true);layout.addWidget(info);
+    auto *info=new QPlainTextEdit(QString("Tesseract OCR: %1\nWindows OCR: available on Windows only\nImage editor: built in\nText editor: built in\n\n").arg(Ocr::executable().isEmpty()?"Not detected":Ocr::executable())+text);info->setReadOnly(true);layout.addWidget(info);
     auto *buttons=new QDialogButtonBox(QDialogButtonBox::Close);connect(buttons,&QDialogButtonBox::rejected,&d,&QDialog::reject);layout.addWidget(buttons);d.exec();
 }
 

@@ -37,7 +37,7 @@ SettingsDialog::SettingsDialog(QWidget *p):QDialog(p){
  auto *tabs=new QTabWidget;auto *ocrTab=new QWidget;auto *ol=new QVBoxLayout(ocrTab);
  ol->addWidget(new QLabel("Bundled Tesseract is preferred. A custom executable is used if the bundle is missing."));
  ocrExe=new QLineEdit(s.value("ocr/executable").toString());ol->addWidget(ocrExe);
- auto *browse=new QPushButton(Icons::get("settings"),"Locate Tesseract executable");ol->addWidget(browse);connect(browse,&QPushButton::clicked,this,[this]{QString file=QFileDialog::getOpenFileName(this,"Locate Tesseract",{},"Programs (*.exe)");if(!file.isEmpty())ocrExe->setText(file);});
+ auto *browse=new QPushButton(Icons::get("settings"),"Locate Tesseract executable");ol->addWidget(browse);connect(browse,&QPushButton::clicked,this,[this]{QString file=QFileDialog::getOpenFileName(this,"Locate Tesseract",{},"All files (*)");if(!file.isEmpty())ocrExe->setText(file);});
  auto *status=new QLabel("Detected: "+Ocr::executable());status->setWordWrap(true);ol->addWidget(status);
  auto *test=new QPushButton(Icons::get("document_scanner"),"Test installed OCR");ol->addWidget(test);connect(test,&QPushButton::clicked,this,[this,test,status]{test->setEnabled(false);status->setText("Testing English recognition using saved configuration…");auto *w=new QFutureWatcher<int>(this);connect(w,&QFutureWatcher<int>::finished,this,[w,test,status]{status->setText(w->result()==0?"PASS — test text recognised":"FAIL — engine, DLLs or English language data missing");test->setEnabled(true);w->deleteLater();});w->setFuture(QtConcurrent::run([]{return Ocr::selfTest();}));});
  ol->addStretch();tabs->addTab(ocrTab,"OCR diagnostics");v->addWidget(tabs,1);

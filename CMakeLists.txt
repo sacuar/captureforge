@@ -24,8 +24,11 @@ qt_add_executable(CaptureForge WIN32
  src/ocr/Ocr.cpp src/ocr/Ocr.h
  src/updates/Updater.cpp src/updates/Updater.h
  src/ui/Icons.cpp src/ui/Icons.h
- windows.rc
 )
+if(WIN32)
+ target_sources(CaptureForge PRIVATE windows.rc)
+endif()
+
 target_include_directories(CaptureForge PRIVATE src)
 target_link_libraries(CaptureForge PRIVATE Qt6::Widgets Qt6::Concurrent Qt6::Network Qt6::Svg QHotkey::QHotkey)
 
