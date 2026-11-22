@@ -1,0 +1,66 @@
+name: CaptureForge Windows installer
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        type: boolean
+        description: Publish Windows installer after successful tests
+        default: false
+  push:
+    tags: ['v*']
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.3'
+          arch: win64_msvc2022_64
+          cache: true
+      - run: choco install innosetup -y --no-progress
+      - name: Build and test OCR, then compile installer
+        shell: pwsh
+        run: ./packaging/windows/build.ps1 -QtDir $env:QT_ROOT_DIR
+      - name: Install and test on runner
+        shell: pwsh
+        run: |
+          $exe=Get-ChildItem installer/*-Setup-x64.exe | Select-Object -First 1
+          $path=Join-Path $env:RUNNER_TEMP 'CaptureForgeTest'
+          $p=Start-Process $exe.FullName -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',"/DIR=`"$path`"" -Wait -PassThru
+          if($p.ExitCode -ne 0){throw 'Installation failed'}
+          $p=Start-Process "$path/CaptureForge.exe" -ArgumentList '--ocr-self-test' -Wait -PassThru
+          if($p.ExitCode -ne 0){throw 'Installed OCR test failed'}
+          $p=Start-Process "$path/CaptureForge.exe" -ArgumentList '--smoke-test' -PassThru
+          if(!$p.WaitForExit(30000)){$p.Kill();throw 'GUI smoke test timed out'}
+          if($p.ExitCode -ne 0){throw 'GUI startup failed'}
+          "$((Get-FileHash $exe.FullName -Algorithm SHA256).Hash.ToLower())  $($exe.Name)" | Set-Content "$($exe.FullName).sha256"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CaptureForge-Windows-x64
+          path: installer/*
+          if-no-files-found: error
+  release:
+    needs: windows
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.publish && github.ref == 'refs/heads/main')
+    runs-on: windows-2022
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: CaptureForge-Windows-x64
+          path: installer
+      - name: Publish release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version=[regex]::Match((Get-Content CMakeLists.txt -Raw),'project\(CaptureForge VERSION ([0-9.]+)').Groups[1].Value
+          $tag="v$version"
+          if($env:GITHUB_REF.StartsWith('refs/tags/') -and $env:GITHUB_REF -ne "refs/tags/$tag"){throw 'Version mismatch'}
+          gh release create $tag "installer/CaptureForge-$version-Setup-x64.exe" "installer/CaptureForge-$version-Setup-x64.exe.sha256" --target $env:GITHUB_SHA --title "CaptureForge $version" --notes-file CHANGELOG.md
+          if($LASTEXITCODE -ne 0){throw 'Release failed'}

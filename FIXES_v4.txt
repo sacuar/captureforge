@@ -1,0 +1,34 @@
+CaptureForge Working v4 — capture/crop/OCR/plugin fixes
+========================================================
+
+CAPTURE
+- Region overlay now keeps desktop snapshot, mouse coordinates, and crop rectangle in the same logical coordinate system.
+- Fixes the old devicePixelRatio mismatch that could return the wrong/blank area.
+- Multi-monitor virtual desktop positions, including negative monitor coordinates, are composited correctly in overlay-local coordinates.
+- Floating capture button gets a slightly longer hide delay so it is not accidentally captured.
+- Selection now shows live width x height.
+
+IMAGE EDITOR / CROP
+- Crop is now visual: click Crop, drag a rectangle, release to apply.
+- Removed numeric x,y,width,height crop dialog.
+- Editor image widget is no longer stretched by QScrollArea, so crop and pen mouse coordinates match image pixels.
+- OCR after crop uses the cropped image.
+
+OCR
+- Reworked Windows Runtime await helper.
+- Fixed StorageFile.OpenAsync result type to IRandomAccessStream.
+- Decoder explicitly produces BGRA8/Ignore-alpha SoftwareBitmap, which Windows.Media.Ocr accepts reliably.
+- Oversized captures are automatically scaled only for OCR to stay below Windows OCR dimension limits.
+- OCR uses a unique temp file and deletes it after completion.
+- Better error messages and provider diagnostics.
+
+PLUGINS
+- Added real QPluginLoader-based PluginManager.
+- New appDir/plugins folder is created automatically.
+- Tray > Plugins > Reload Plugins / Open Plugins Folder / Plugin Status.
+- General plugins can implement ICaptureForgePlugin.
+- OCR plugins can implement ICaptureForgeOcrPlugin; OCR DLLs get first chance, then built-in Windows OCR is used as fallback.
+- BUILD.bat deploys the plugin README beside the EXE.
+
+BUILD
+Run CLEAN_BUILD.bat once so CMake picks up the new PluginManager source files.

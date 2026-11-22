@@ -1,0 +1,10 @@
+CaptureForge Working v3 fixes:
+- Camera icon replaces scissors on floating capture button.
+- Custom camera icon used for taskbar/application/tray.
+- Left click or double-click tray icon starts region capture.
+- Right-click tray icon opens Capture Region / OCR Last Capture / Text Editor / Settings / Quit.
+- OCR helper rewritten with explicit Windows Runtime types.
+- OCR now displays the actual PowerShell/Windows OCR error instead of silently failing.
+- OCR result opens in the built-in Text Editor and is copied to clipboard.
+- camera.png and ocr.ps1 are automatically copied beside the EXE.
+Run CLEAN_BUILD.bat once for this version.

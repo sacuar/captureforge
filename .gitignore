@@ -1,0 +1,8 @@
+/build/
+/dist/
+/installer/
+/.vs/
+CMakeUserPresets.json
+*.user
+*.obj
+*.pdb
