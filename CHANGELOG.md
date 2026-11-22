@@ -1,3 +1,9 @@
+# 1.0.2
+
+- Compact image and text editor toolbars: 18 px icons, tighter spacing, hover tooltips and optional text labels via right-click.
+- Compact launcher: Capture, OCR and Text editor grouped in one row; Settings and More below.
+- Retain all existing capture, editing, OCR and add-on functionality.
+
 # 1.0.1
 
 - Optional installation maintenance wizard and Start menu tool.

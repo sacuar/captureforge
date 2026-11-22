@@ -6,7 +6,11 @@ void ThemeManager::apply(QApplication &app,const QString &name){
  bool light=name=="Light";QString bg=light?"#f5f6f8":name=="Graphite"?"#25282d":"#1c2027", panel=light?"#ffffff":"#272e38", fg=light?"#213044":"#edf2f7", edge=light?"#d4dbe5":"#3a4655", hover=light?"#e5edf7":"#354253";
  app.setStyleSheet(QString(R"(
  QWidget {background:%1;color:%3;font-family:'Segoe UI';font-size:13px;}
- QToolBar {border:0;spacing:5px;padding:7px;}
+ QToolBar {border:0;spacing:2px;padding:3px 5px;}
+ QToolBar::separator {width:1px;background:%4;margin:4px 3px;}
+ QToolBar QToolButton {padding:4px;border-radius:5px;min-width:20px;min-height:20px;}
+ QToolBar QToolButton::menu-indicator {width:9px;}
+ QMenuBar::item {padding:4px 9px;}
  QToolButton,QPushButton {background:transparent;border:1px solid transparent;border-radius:6px;padding:7px;}
  QToolButton:hover,QPushButton:hover {background:%5;} QToolButton:checked {background:#246bc0;color:white;}
  QLineEdit,QPlainTextEdit,QTextEdit,QComboBox,QKeySequenceEdit {background:%2;border:1px solid %4;border-radius:6px;padding:7px;selection-background-color:#246bc0;}

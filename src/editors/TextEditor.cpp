@@ -1,6 +1,9 @@
 #include "TextEditor.h"
 #include "ui/Icons.h"
 #include <QToolBar>
+#include <QSettings>
+#include <QMenu>
+#include <QKeySequence>
 #include <QAction>
 #include <QPlainTextEdit>
 #include <QMenuBar>
@@ -11,7 +14,13 @@
 #include <QMessageBox>
 TextEditor::TextEditor(QWidget*p):QMainWindow(p){
  setAttribute(Qt::WA_DeleteOnClose);setWindowTitle("CaptureForge Text Editor");resize(900,650);edit=new QPlainTextEdit;edit->setUndoRedoEnabled(true);setCentralWidget(edit);
- auto *tools=addToolBar("Text tools");tools->setMovable(false);tools->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);tools->addAction(Icons::get("save"),"Save",this,&TextEditor::save);tools->addAction(Icons::get("content_copy"),"Copy",edit,&QPlainTextEdit::copy);tools->addAction(Icons::get("search"),"Find",this,&TextEditor::findText);
+ auto *tools=addToolBar("Text tools");tools->setMovable(false);tools->setIconSize(QSize(18,18));tools->setObjectName("TextTools");tools->setToolButtonStyle(QSettings().value("ui/toolbarLabels",false).toBool()?Qt::ToolButtonTextBesideIcon:Qt::ToolButtonIconOnly);tools->addAction(Icons::get("save"),"Save",this,&TextEditor::save);tools->addAction(Icons::get("content_copy"),"Copy",edit,&QPlainTextEdit::copy);tools->addAction(Icons::get("search"),"Find",this,&TextEditor::findText);
+ for(auto *action:tools->actions())action->setToolTip(action->text());
+ tools->setContextMenuPolicy(Qt::CustomContextMenu);
+ connect(tools,&QToolBar::customContextMenuRequested,this,[tools](const QPoint &point){
+     QMenu menu(tools);auto *labels=menu.addAction("Show toolbar labels");labels->setCheckable(true);labels->setChecked(tools->toolButtonStyle()!=Qt::ToolButtonIconOnly);
+     if(menu.exec(tools->mapToGlobal(point))==labels){QSettings().setValue("ui/toolbarLabels",labels->isChecked());tools->setToolButtonStyle(labels->isChecked()?Qt::ToolButtonTextBesideIcon:Qt::ToolButtonIconOnly);}
+ });
  auto *file=menuBar()->addMenu("&File");file->addAction("New",[this]{edit->clear();fileName.clear();});file->addAction("Open",this,&TextEditor::openFile);
  file->addAction("Save",this,&TextEditor::save);file->addAction("Save As",this,&TextEditor::saveAs);file->addSeparator();file->addAction("Close",this,&QWidget::close);
  auto *ed=menuBar()->addMenu("&Edit");ed->addAction("Undo",edit,&QPlainTextEdit::undo);ed->addAction("Redo",edit,&QPlainTextEdit::redo);ed->addSeparator();

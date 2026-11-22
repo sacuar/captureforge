@@ -7,6 +7,9 @@
 #include <QPointer>
 #include <QDialog>
 #include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QToolButton>
+#include <QSizePolicy>
 #include <QLabel>
 #include <QPlainTextEdit>
 #include <QDialogButtonBox>
@@ -130,17 +133,26 @@ void Controller::registerHotkeys() {
 
 void Controller::showHome(){
     if(!home){
-        home=new QDialog;home->setWindowTitle("CaptureForge");home->resize(550,420);
-        auto *layout=new QVBoxLayout(home);layout->setContentsMargins(24,24,24,24);layout->setSpacing(10);
-        auto *heading=new QLabel("<h1>CaptureForge</h1><p>Capture, annotate and recognise text locally.</p>");layout->addWidget(heading);
-        auto make=[this,layout](const QString &name,const QString &icon,auto action){auto *button=new QPushButton(Icons::get(icon),name,home);button->setMinimumHeight(42);button->setIconSize(QSize(24,24));layout->addWidget(button);connect(button,&QPushButton::clicked,this,action);};
-        make("Capture region","crop",[this]{capture();});
-        make("OCR last capture","document_scanner",[this]{if(lastImage.isNull())QMessageBox::information(home,"OCR","Capture an image first.");else runOCR(lastImage);});
+        home=new QDialog;home->setWindowTitle("CaptureForge");home->resize(410,220);
+        auto *layout=new QVBoxLayout(home);layout->setContentsMargins(14,14,14,14);layout->setSpacing(8);
+        auto *heading=new QLabel("<span style='font-size:20px;font-weight:600'>CaptureForge</span><br>Capture, annotate and recognise text.");layout->addWidget(heading);
+        auto *row=new QHBoxLayout;row->setSpacing(5);layout->addLayout(row);
+        auto make=[this,row](const QString &name,const QString &icon,auto action){
+            auto *button=new QToolButton(home);button->setText(name);button->setToolTip(name);button->setAccessibleName(name);
+            button->setIcon(Icons::get(icon));button->setIconSize(QSize(20,20));button->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
+            button->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Fixed);button->setMinimumHeight(52);
+            row->addWidget(button);connect(button,&QToolButton::clicked,this,action);
+        };
+        make("Capture","crop",[this]{capture();});
+        make("OCR","document_scanner",[this]{if(lastImage.isNull())QMessageBox::information(home,"OCR","Capture an image first.");else runOCR(lastImage);});
         make("Text editor","edit",[this]{openTextEditor();});
-        make("Settings","settings",[this]{openSettings();});
-        make("Manage add-ons","extension",[this]{showPluginStatus();});
-        make("Check for updates","update",[this]{updater->check(true);});
-        layout->addStretch();layout->addWidget(new QLabel("Version "+qApp->applicationVersion()+" • Ctrl+Shift+S to capture"));
+        auto *footer=new QHBoxLayout;footer->setSpacing(4);layout->addLayout(footer);
+        auto *hint=new QLabel("Version "+qApp->applicationVersion());footer->addWidget(hint);footer->addStretch();
+        auto *settings=new QToolButton(home);settings->setIcon(Icons::get("settings"));settings->setText("Settings");settings->setToolTip("Settings");settings->setAccessibleName("Settings");settings->setIconSize(QSize(18,18));
+        connect(settings,&QToolButton::clicked,this,&Controller::openSettings);footer->addWidget(settings);
+        auto *more=new QToolButton(home);more->setText("More");more->setToolButtonStyle(Qt::ToolButtonTextOnly);more->setPopupMode(QToolButton::InstantPopup);more->setAccessibleName("More tools");
+        auto *menu=new QMenu(more);menu->addAction(Icons::get("extension"),"Manage add-ons",this,[this]{showPluginStatus();});menu->addAction(Icons::get("update"),"Check for updates",this,[this]{updater->check(true);});more->setMenu(menu);footer->addWidget(more);
+        layout->addWidget(new QLabel("Capture shortcut: "+QSettings().value("shortcuts/region","Ctrl+Shift+S").toString()));layout->addStretch();
     }
     home->show();home->raise();home->activateWindow();
 }

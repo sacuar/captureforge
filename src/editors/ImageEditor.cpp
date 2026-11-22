@@ -4,6 +4,9 @@
 #include <QLabel>
 #include <QScrollArea>
 #include <QToolBar>
+#include <QSettings>
+#include <QMenu>
+#include <QKeySequence>
 #include <QFileDialog>
 #include <QClipboard>
 #include <QApplication>
@@ -31,7 +34,7 @@ ImageEditor::ImageEditor(const QPixmap &p, QWidget *parent)
     setCentralWidget(scroll);
 
     auto *t = addToolBar("Image Tools");
-    t->setMovable(false); t->setIconSize(QSize(22,22)); t->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+    t->setMovable(false); t->setIconSize(QSize(18,18)); t->setObjectName("ImageTools"); t->setToolButtonStyle(QSettings().value("ui/toolbarLabels",false).toBool()?Qt::ToolButtonTextBesideIcon:Qt::ToolButtonIconOnly);
     t->addAction(Icons::get("save"),"Save As", this, &ImageEditor::saveAs);
     t->addAction(Icons::get("content_copy"),"Copy", this, &ImageEditor::copy);
     t->addSeparator();
@@ -61,6 +64,12 @@ ImageEditor::ImageEditor(const QPixmap &p, QWidget *parent)
     t->addSeparator();
     t->addAction(Icons::get("document_scanner"),"OCR → Text Editor", [this] { emit requestOCR(image); });
 
+    for(auto *action:t->actions())if(!action->isSeparator()){action->setToolTip(action->text());}
+    t->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(t,&QToolBar::customContextMenuRequested,this,[t](const QPoint &point){
+        QMenu menu(t);auto *labels=menu.addAction("Show toolbar labels");labels->setCheckable(true);labels->setChecked(t->toolButtonStyle()!=Qt::ToolButtonIconOnly);
+        if(menu.exec(t->mapToGlobal(point))==labels){QSettings().setValue("ui/toolbarLabels",labels->isChecked());t->setToolButtonStyle(labels->isChecked()?Qt::ToolButtonTextBesideIcon:Qt::ToolButtonIconOnly);}
+    });
     statusBar()->showMessage("Ready");
     refresh();
 }
