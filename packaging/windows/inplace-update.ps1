@@ -48,8 +48,10 @@ catch {
         $logDir = Join-Path $env:LOCALAPPDATA 'CaptureForge'
         New-Item -ItemType Directory -Force -Path $logDir | Out-Null
         Set-Content -LiteralPath (Join-Path $logDir 'update-error.log') -Value $message -Encoding UTF8
-        Add-Type -AssemblyName System.Windows.Forms
-        [System.Windows.Forms.MessageBox]::Show($message, 'CaptureForge update failed', 'OK', 'Error') | Out-Null
+        if (-not $NoRelaunch) {
+            Add-Type -AssemblyName System.Windows.Forms
+            [System.Windows.Forms.MessageBox]::Show($message, 'CaptureForge update failed', 'OK', 'Error') | Out-Null
+        }
     } catch {}
 }
 finally {
