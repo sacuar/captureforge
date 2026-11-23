@@ -56,8 +56,9 @@ void Updater::check(bool manual){
   for(const auto &v:obj.value("assets").toArray()){auto a=v.toObject();if(a.value("name").toString()==name&&a.value("browser_download_url").toString()==url){digest=a.value("digest").toString();size=a.value("size").toInteger();break;}}
   bool verified=QRegularExpression("^sha256:[0-9a-fA-F]{64}$").match(digest).hasMatch()&&size>0&&size<=536870912;
   QDialog d;d.setWindowTitle("CaptureForge update");d.resize(520,360);QVBoxLayout l(&d);
-  l.addWidget(new QLabel("Installed "+qApp->applicationVersion()+" → Available "+ver));l.addWidget(new QLabel("What's new"));auto *notes=new QPlainTextEdit(obj.value("body").toString());notes->setReadOnly(true);l.addWidget(notes);
-  QDialogButtonBox buttons(QDialogButtonBox::Cancel);buttons.addButton(verified?"Update CaptureForge":"Open release page",QDialogButtonBox::AcceptRole);l.addWidget(&buttons);connect(&buttons,&QDialogButtonBox::accepted,&d,&QDialog::accept);connect(&buttons,&QDialogButtonBox::rejected,&d,&QDialog::reject);
+  l.addWidget(new QLabel("Installed "+qApp->applicationVersion()+" → Available "+ver));
+  l.addWidget(new QLabel("Save any open edits before updating. CaptureForge will restart using the same installation."));l.addWidget(new QLabel("What's new"));auto *notes=new QPlainTextEdit(obj.value("body").toString());notes->setReadOnly(true);l.addWidget(notes);
+  QDialogButtonBox buttons(QDialogButtonBox::Cancel);buttons.addButton(verified?"Update and restart":"Open release page",QDialogButtonBox::AcceptRole);l.addWidget(&buttons);connect(&buttons,&QDialogButtonBox::accepted,&d,&QDialog::accept);connect(&buttons,&QDialogButtonBox::rejected,&d,&QDialog::reject);
   if(d.exec()!=QDialog::Accepted)return;if(!verified){QDesktopServices::openUrl(QUrl(repo));return;}
   busy=true;auto *temp=new QTemporaryDir(QDir::tempPath()+"/captureforge-update-XXXXXX"); if(!temp->isValid()){delete temp;busy=false;return;}QString path=temp->filePath(name);auto *file=new QFile(path,this);
   if(!file->open(QIODevice::WriteOnly)){delete file;delete temp;busy=false;return;}
@@ -81,11 +82,6 @@ void Updater::check(bool manual){
       QMessageBox::warning(nullptr,"Updates",
         "Automatic update is unavailable in this installation. Use the official release page instead.");
       return;
-    }
-    if(QMessageBox::question(nullptr,"Apply verified update",
-        "Update this CaptureForge installation in place and restart it? "
-        "Your settings and shortcuts will be preserved.")!=QMessageBox::Yes){
-      delete temp;return;
     }
     const QStringList args={
       "-NoProfile","-NonInteractive","-ExecutionPolicy","Bypass",
