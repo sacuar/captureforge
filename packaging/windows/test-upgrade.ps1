@@ -30,7 +30,7 @@ if ((Get-ItemProperty -Path $settings -Name UpgradeSentinel).UpgradeSentinel -ne
 }
 $entries = @(Get-ChildItem 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall' |
   ForEach-Object {Get-ItemProperty $_.PSPath} |
-  Where-Object {$_.DisplayName -match '^CaptureForge(?:\\s|$)'})
+  Where-Object {$_.DisplayName -match '^CaptureForge(?:\s|$)'})
 if ($entries.Count -ne 1) {throw "Expected one uninstall entry, got $($entries.Count)"}
 if ($entries[0].InstallLocation.TrimEnd('\') -ine $installDir.TrimEnd('\')) {
  throw 'Installation directory changed'
