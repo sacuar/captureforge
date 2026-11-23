@@ -12,6 +12,14 @@
 
 </div>
 
+<div align="center">
+
+[![GitHub stars](https://img.shields.io/github/stars/sacuar/captureforge?style=flat&label=Stars)](https://github.com/sacuar/captureforge/stargazers) [![Windows installer downloads](https://img.shields.io/github/downloads/sacuar/captureforge/v1.0.2/CaptureForge-1.0.2-Setup-x64.exe?style=flat&label=Windows%20downloads)](https://github.com/sacuar/captureforge/releases/tag/v1.0.2) [![Ubuntu package downloads](https://img.shields.io/github/downloads/sacuar/captureforge/v1.0.2/CaptureForge-1.0.2-ubuntu24.04-amd64.deb?style=flat&label=Ubuntu%20downloads)](https://github.com/sacuar/captureforge/releases/tag/v1.0.2)
+
+[View visitors and referral sources](https://github.com/sacuar/captureforge/graphs/traffic) · [All releases](https://github.com/sacuar/captureforge/releases)
+
+</div>
+
 ## Why use CaptureForge?
 
 - Capture a region or monitor, then crop, rotate, annotate and save.
