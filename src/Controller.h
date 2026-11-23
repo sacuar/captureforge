@@ -1,6 +1,7 @@
 #pragma once
 #include <QObject>
 #include <QImage>
+#include <QStringList>
 #include <QSystemTrayIcon>
 
 class QHotkey;
@@ -23,6 +24,8 @@ private slots:
     void openSettings();
     void reloadSettings();
     void openTextEditor();
+    void showClipboardHistory();
+    void scanDocument();
     void runOCR(const QImage&);
     void trayActivated(QSystemTrayIcon::ActivationReason reason);
 
@@ -45,6 +48,8 @@ private:
     CaptureOverlay *overlay = nullptr;
     PluginManager *pluginManager = nullptr;
     QImage lastImage;
+    QStringList clipboardHistory;
+    bool updatingClipboard = false;
     Updater *updater=nullptr;
     QDialog *home=nullptr;
     bool ocrBusy=false, capturePending=false;
