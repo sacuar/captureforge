@@ -303,13 +303,15 @@ try {
 )PS").arg(QDir::toNativeSeparators(output).replace("'","''"));
     auto *progress=new QProgressDialog("Discovering WIA scanners and acquiring image…","Cancel",0,0);
     progress->setWindowTitle("CaptureForge Scan");
-    progress->setAttribute(Qt::WA_DeleteOnClose);
+    progress->setAttribute(Qt::WA_DeleteOnClose, false);
     progress->setMinimumDuration(0);
     progress->setWindowModality(Qt::NonModal);
     connect(progress,&QProgressDialog::canceled,process,&QProcess::kill);
     connect(process,QOverload<int,QProcess::ExitStatus>::of(&QProcess::finished),
         this,[this,process,progress,output](int code,QProcess::ExitStatus status){
         progress->close();
+        progress->deleteLater();
+        process->deleteLater();
         if(code==0 && status==QProcess::NormalExit && QFileInfo::exists(output)){
             QImage image(output);
             QFile::remove(output);
@@ -325,7 +327,6 @@ try {
             QMessageBox::warning(nullptr,"Scan failed",
                 "Unable to acquire an image. Check scanner power, WIA driver and permissions.\\n"+
                 QString::fromLocal8Bit(process->readAllStandardError()).left(1500));
-        process->deleteLater();
     });
     process->start("powershell.exe",{"-NoProfile","-STA","-Command",script});
     progress->show();
