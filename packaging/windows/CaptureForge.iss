@@ -1,5 +1,5 @@
 #ifndef AppVersion
-#define AppVersion "1.0.2"
+#define AppVersion "1.0.3"
 #endif
 [Setup]
 AppId={{C77C873F-687A-43C2-A438-5D72E24B1BB1}
@@ -8,6 +8,9 @@ AppVersion={#AppVersion}
 AppPublisher=CaptureForge
 AppPublisherURL=https://github.com/sacuar/captureforge
 DefaultDirName={localappdata}\Programs\CaptureForge
+UsePreviousAppDir=yes
+UsePreviousTasks=yes
+DisableDirPage=auto
 DefaultGroupName=CaptureForge
 PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible

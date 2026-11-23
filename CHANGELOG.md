@@ -1,3 +1,11 @@
+# 1.0.3
+
+- In-app Windows updates download and verify official installer, wait for CaptureForge to exit, silently upgrade the existing location and restart in the tray.
+- Preserve the original Inno Setup AppId, user settings and existing installation path; avoid parallel installations.
+- Log upgrade failures to the local CaptureForge app-data folder.
+- CI now installs 1.0.2 and upgrades it to 1.0.3, checking settings, one uninstall entry, OCR and startup.
+- Note: the first upgrade from 1.0.2 still uses its older interactive installer; the new silent mechanism is available in 1.0.3 and later.
+
 # 1.0.2
 
 - Compact image and text editor toolbars: 18 px icons, tighter spacing, hover tooltips and optional text labels via right-click.
