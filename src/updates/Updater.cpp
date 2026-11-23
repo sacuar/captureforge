@@ -15,6 +15,7 @@
 #include <QPushButton>
 #include <QCryptographicHash>
 #include <QTemporaryDir>
+#include <QCoreApplication>
 #include <QFile>
 #include <QProcess>
 #include <QProgressDialog>
@@ -52,9 +53,9 @@ void Updater::check(bool manual){
   bool verified=QRegularExpression("^sha256:[0-9a-fA-F]{64}$").match(digest).hasMatch()&&size>0&&size<=536870912;
   QDialog d;d.setWindowTitle("CaptureForge update");d.resize(570,460);QVBoxLayout l(&d);
   l.addWidget(new QLabel("Installed "+qApp->applicationVersion()+" → Available "+ver));l.addWidget(new QLabel("What's new"));auto *notes=new QPlainTextEdit(obj.value("body").toString());notes->setReadOnly(true);l.addWidget(notes);
-  QDialogButtonBox buttons(QDialogButtonBox::Cancel);buttons.addButton(verified?"Download and install":"Open release page",QDialogButtonBox::AcceptRole);l.addWidget(&buttons);connect(&buttons,&QDialogButtonBox::accepted,&d,&QDialog::accept);connect(&buttons,&QDialogButtonBox::rejected,&d,&QDialog::reject);
+  QDialogButtonBox buttons(QDialogButtonBox::Cancel);buttons.addButton(verified?"Update and restart":"Open release page",QDialogButtonBox::AcceptRole);l.addWidget(&buttons);connect(&buttons,&QDialogButtonBox::accepted,&d,&QDialog::accept);connect(&buttons,&QDialogButtonBox::rejected,&d,&QDialog::reject);
   if(d.exec()!=QDialog::Accepted)return;if(!verified){QDesktopServices::openUrl(QUrl(repo));return;}
-  busy=true;auto *temp=new QTemporaryDir; if(!temp->isValid()){delete temp;busy=false;return;}QString path=temp->filePath(name);auto *file=new QFile(path,this);
+  busy=true;auto *temp=new QTemporaryDir(QDir::tempPath()+"/CaptureForgeUpdate-XXXXXX"); if(!temp->isValid()){delete temp;busy=false;return;}QString path=temp->filePath(name);auto *file=new QFile(path,this);
   if(!file->open(QIODevice::WriteOnly)){delete file;delete temp;busy=false;return;}
   auto *download=network.get(request(QUrl(url)));auto *dialog=new QProgressDialog("Downloading verified installer…","Cancel",0,100);dialog->setAutoClose(false);dialog->setAutoReset(false);dialog->setWindowModality(Qt::ApplicationModal);dialog->show();
   auto *hash=new QCryptographicHash(QCryptographicHash::Sha256);auto *count=new qint64(0);auto *bad=new bool(false);
@@ -66,8 +67,22 @@ void Updater::check(bool manual){
     if(download->bytesAvailable())consume();file->close();bool ok=!*bad&&download->error()==QNetworkReply::NoError&&*count==size&&hash->result().toHex()==digest.mid(7).toLatin1().toLower();
     delete hash;delete count;delete bad;file->deleteLater();download->deleteLater();dialog->deleteLater();busy=false;
     if(!ok){delete temp;QMessageBox::warning(nullptr,"Updates","Download cancelled or integrity verification failed.");return;}
-    if(QMessageBox::question(nullptr,"Install update","Installer verified. Close CaptureForge and start installation?")!=QMessageBox::Yes){delete temp;return;}
-    if(QProcess::startDetached(path,{"/NORESTART","/SP-"},temp->path())){temp->setAutoRemove(false);delete temp;qApp->quit();}else{delete temp;QMessageBox::warning(nullptr,"Updates","Could not launch installer.");}
+    const QString source=QCoreApplication::applicationDirPath()+"/update-helper.ps1";
+    const QString staged=temp->filePath("update-helper.ps1");
+    if(!QFile::copy(source,staged)){
+      delete temp;QMessageBox::warning(nullptr,"Updates","Update helper missing. Repair CaptureForge with its official installer.");return;
+    }
+    const QStringList args={"-NoProfile","-NonInteractive","-ExecutionPolicy","Bypass",
+      "-WindowStyle","Hidden","-File",QDir::toNativeSeparators(staged),
+      "-InstallerPath",QDir::toNativeSeparators(path),
+      "-InstallDir",QDir::toNativeSeparators(QCoreApplication::applicationDirPath()),
+      "-ExpectedSha256",digest.mid(7),
+      "-ProcessIdToWait",QString::number(QCoreApplication::applicationPid()),
+      "-RestartExe",QDir::toNativeSeparators(QCoreApplication::applicationFilePath())};
+    temp->setAutoRemove(false);
+    if(QProcess::startDetached("powershell.exe",args,temp->path())){
+      delete temp;qApp->quit();
+    }else{temp->setAutoRemove(true);delete temp;QMessageBox::warning(nullptr,"Updates","Could not start the update helper.");}
   });
  });
 }
