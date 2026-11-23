@@ -43,8 +43,16 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view v1.0.2 >/dev/null
-          gh release upload v1.0.2 installer/linux/*.deb installer/linux/*.sha256
+          version="$(sed -nE 's/.*project\(CaptureForge VERSION ([0-9.]+).*/\1/p' CMakeLists.txt | head -n1)"
+          for attempt in $(seq 1 30); do
+            if gh release view "v$version" >/dev/null 2>&1; then
+              gh release upload "v$version" installer/linux/*.deb installer/linux/*.sha256 --clobber
+              exit 0
+            fi
+            sleep 20
+          done
+          echo "Windows release not published yet; Ubuntu package remains as CI artifact."
+          exit 1
       - uses: actions/upload-artifact@v4
         with:
           name: CaptureForge-Ubuntu-24.04-amd64
