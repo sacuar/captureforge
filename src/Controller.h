@@ -5,6 +5,8 @@
 
 class QHotkey;
 class QPushButton;
+class QWidget;
+class QAction;
 class QDialog;
 class CaptureOverlay;
 class PluginManager;
@@ -38,7 +40,8 @@ private:
     QHotkey *hkText = nullptr;
     QHotkey *hkSettings = nullptr;
     QSystemTrayIcon *tray = nullptr;
-    QPushButton *floating = nullptr;
+    QWidget *floating = nullptr;
+    QAction *floatingToggle = nullptr;
     CaptureOverlay *overlay = nullptr;
     PluginManager *pluginManager = nullptr;
     QImage lastImage;
