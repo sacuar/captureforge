@@ -6,10 +6,18 @@ on:
         type: boolean
         description: Publish Windows installer after successful tests
         default: false
+  pull_request:
+    paths:
+      - 'CMakeLists.txt'
+      - 'src/**'
+      - 'packaging/windows/**'
+      - '.github/workflows/windows-release.yml'
   push:
     branches: [main]
     paths:
       - 'CMakeLists.txt'
+      - 'src/**'
+      - 'packaging/windows/**'
       - '.github/workflows/windows-release.yml'
     tags: ['v*']
 permissions:
@@ -28,18 +36,13 @@ jobs:
       - name: Build and test OCR, then compile installer
         shell: pwsh
         run: ./packaging/windows/build.ps1 -QtDir $env:QT_ROOT_DIR
-      - name: Install and test on runner
+      - name: Install old version and verify in-place upgrade
+        shell: pwsh
+        run: ./packaging/windows/test-upgrade.ps1
+      - name: Write release SHA-256
         shell: pwsh
         run: |
           $exe=Get-ChildItem installer/*-Setup-x64.exe | Select-Object -First 1
-          $path=Join-Path $env:RUNNER_TEMP 'CaptureForgeTest'
-          $p=Start-Process $exe.FullName -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',"/DIR=`"$path`"" -Wait -PassThru
-          if($p.ExitCode -ne 0){throw 'Installation failed'}
-          $p=Start-Process "$path/CaptureForge.exe" -ArgumentList '--ocr-self-test' -Wait -PassThru
-          if($p.ExitCode -ne 0){throw 'Installed OCR test failed'}
-          $p=Start-Process "$path/CaptureForge.exe" -ArgumentList '--smoke-test' -PassThru
-          if(!$p.WaitForExit(30000)){$p.Kill();throw 'GUI smoke test timed out'}
-          if($p.ExitCode -ne 0){throw 'GUI startup failed'}
           "$((Get-FileHash $exe.FullName -Algorithm SHA256).Hash.ToLower())  $($exe.Name)" | Set-Content "$($exe.FullName).sha256"
       - uses: actions/upload-artifact@v4
         with:
