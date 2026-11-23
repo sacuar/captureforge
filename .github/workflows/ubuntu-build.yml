@@ -43,8 +43,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view v1.0.2 >/dev/null
-          gh release upload v1.0.2 installer/linux/*.deb installer/linux/*.sha256
+          version="$(sed -nE 's/.*project\(CaptureForge VERSION ([0-9.]+).*/\1/p' CMakeLists.txt | head -n1)"
+          if [ -z "$version" ]; then echo "Missing project version"; exit 1; fi
+          tag="v$version"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" installer/linux/*.deb installer/linux/*.sha256 --clobber
+          else
+            echo "Release $tag not yet published; leave tested Ubuntu artifact available from Actions"
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: CaptureForge-Ubuntu-24.04-amd64
