@@ -22,6 +22,7 @@
 #include "plugins/PluginInterface.h"
 #include <QApplication>
 #include <QClipboard>
+#include <QMimeData>
 #include <QHotkey>
 #include <QSystemTrayIcon>
 #include <QMenu>
@@ -29,6 +30,15 @@
 #include <QWidget>
 #include <QAction>
 #include <QGuiApplication>
+#include <QInputDialog>
+#include <QCheckBox>
+#include <QListWidget>
+#include <QListWidgetItem>
+#include <QStandardPaths>
+#include <QTemporaryDir>
+#include <QDateTime>
+#include <QProgressDialog>
+#include <QTextStream>
 #include <QSettings>
 #include <QTimer>
 #include <QScreen>
@@ -54,6 +64,17 @@ Controller::Controller() {
     if (preferences.value("plugins/enabled", false).toBool()) pluginManager->reload();
     buildFloating();
     buildTray();
+    connect(QApplication::clipboard(), &QClipboard::dataChanged, this, [this]{
+        if (!QSettings().value("clipboard/historyEnabled",false).toBool() || updatingClipboard) return;
+        const auto *mime=QApplication::clipboard()->mimeData();
+        if (!mime || !mime->hasText()) return;
+        QString value=mime->text();
+        if(value.isEmpty() || value.size()>16384) return;
+        clipboardHistory.removeAll(value);
+        clipboardHistory.prepend(value);
+        while(clipboardHistory.size()>qBound(1,QSettings().value("clipboard/maxItems",20).toInt(),100))
+            clipboardHistory.removeLast();
+    });
     registerHotkeys();
     updater = new Updater(this);
     if (preferences.value("updates/startup",true).toBool()) QTimer::singleShot(2500,updater,[this]{updater->check(false);});
@@ -109,6 +130,8 @@ void Controller::buildTray() {
     tray = new QSystemTrayIcon(icon, this);
     auto *m = new QMenu;
     m->addAction(Icons::get("crop"), "Capture Region", this, &Controller::capture);
+    m->addAction(Icons::get("document_scanner"), "Scan from scanner…", this, &Controller::scanDocument);
+    m->addAction(Icons::get("history"), "Clipboard history…", this, &Controller::showClipboardHistory);
     floatingToggle = m->addAction(Icons::get("camera"), "Show sidebar camera");
     floatingToggle->setCheckable(true);
     floatingToggle->setChecked(QSettings().value("ui/floating",true).toBool());
@@ -200,6 +223,113 @@ void Controller::openSettings() {
     d->setAttribute(Qt::WA_DeleteOnClose);
     connect(d, &SettingsDialog::settingsChanged, this, &Controller::reloadSettings);
     d->show();
+}
+
+void Controller::showClipboardHistory() {
+    QDialog d;
+    d.setWindowTitle("Clipboard history · this session only");
+    auto *layout=new QVBoxLayout(&d);
+    layout->addWidget(new QLabel("Optional local text history. Disabled by default; never uploaded or saved to disk."));
+    auto *enabled=new QCheckBox("Remember text copied while CaptureForge is running");
+    enabled->setChecked(QSettings().value("clipboard/historyEnabled",false).toBool());
+    layout->addWidget(enabled);
+    auto *items=new QListWidget;
+    for(const QString &value: clipboardHistory) {
+        auto *item=new QListWidgetItem(value.left(130).replace('\\n',' '),items);
+        item->setToolTip(value.left(1000));
+        item->setData(Qt::UserRole,value);
+    }
+    items->setMinimumSize(420,175);
+    layout->addWidget(items);
+    auto *row=new QHBoxLayout;
+    auto *restore=new QPushButton("Copy selected");
+    auto *clear=new QPushButton("Clear history");
+    auto *close=new QPushButton("Close");
+    row->addWidget(restore);row->addWidget(clear);row->addStretch();row->addWidget(close);
+    layout->addLayout(row);
+    connect(enabled,&QCheckBox::toggled,&d,[this](bool v){
+        QSettings().setValue("clipboard/historyEnabled",v);
+        if(!v)clipboardHistory.clear();
+    });
+    connect(restore,&QPushButton::clicked,&d,[this,items]{
+        if(!items->currentItem())return;
+        updatingClipboard=true;
+        QApplication::clipboard()->setText(items->currentItem()->data(Qt::UserRole).toString());
+        updatingClipboard=false;
+    });
+    connect(clear,&QPushButton::clicked,&d,[this,items]{clipboardHistory.clear();items->clear();});
+    connect(close,&QPushButton::clicked,&d,&QDialog::accept);
+    d.exec();
+}
+
+void Controller::scanDocument() {
+#ifndef Q_OS_WIN
+    QMessageBox::information(nullptr,"Scanner support",
+        "Scanner acquisition currently uses Windows Image Acquisition (WIA). "
+        "On this platform, import a scanner image through the image editor.");
+#else
+    // Windows enumerates locally installed WIA scanners, including network
+    // devices exposed via compatible WIA drivers. No arbitrary network probing.
+    auto *process=new QProcess(this);
+    const QString output=QStandardPaths::writableLocation(QStandardPaths::TempLocation)
+        +"/CaptureForge-scan-"+QUuid::createUuid().toString(QUuid::WithoutBraces)+".png";
+    const QString script=QString::fromUtf8(R"PS(
+$ErrorActionPreference='Stop'
+try {
+ $manager=New-Object -ComObject WIA.DeviceManager
+ $scanners=@($manager.DeviceInfos | Where-Object { $_.Type -eq 1 })
+ if ($scanners.Count -eq 0) { throw 'No WIA-compatible scanners were found. Install your scanner driver in Windows first.' }
+ $devices=@()
+ foreach($deviceInfo in $scanners){
+   $name=try{$deviceInfo.Properties.Item('Name').Value}catch{'Scanner'}
+   $devices+=("$name")
+ }
+ $chosen=0
+ if($devices.Count -gt 1){
+   Add-Type -AssemblyName Microsoft.VisualBasic
+   $reply=[Microsoft.VisualBasic.Interaction]::InputBox(
+       ('Available scanners: '+ (($devices | ForEach-Object { [array]::IndexOf($devices,$_).ToString()+': '+$_ }) -join '; ')),
+       'CaptureForge - choose scanner index','0')
+   if($reply -notmatch '^\d+$'){exit 3}
+   $chosen=[int]$reply
+   if($chosen -ge $scanners.Count){throw 'Invalid scanner selection'}
+ }
+ $dev=$scanners[$chosen].Connect()
+ $item=$dev.Items.Item(1)
+ $scan=$item.Transfer('{B96B3CAF-0728-11D3-9D7B-0000F81EF32E}')
+ $scan.SaveFile('%1')
+ Write-Output '%1'
+}catch{Write-Error $_.Exception.Message; exit 1}
+)PS").arg(QDir::toNativeSeparators(output).replace("'","''"));
+    auto *progress=new QProgressDialog("Discovering WIA scanners and acquiring image…","Cancel",0,0);
+    progress->setWindowTitle("CaptureForge Scan");
+    progress->setAttribute(Qt::WA_DeleteOnClose);
+    progress->setMinimumDuration(0);
+    progress->setWindowModality(Qt::NonModal);
+    connect(progress,&QProgressDialog::canceled,process,&QProcess::kill);
+    connect(process,QOverload<int,QProcess::ExitStatus>::of(&QProcess::finished),
+        this,[this,process,progress,output](int code,QProcess::ExitStatus status){
+        progress->close();
+        if(code==0 && status==QProcess::NormalExit && QFileInfo::exists(output)){
+            QImage image(output);
+            QFile::remove(output);
+            if(!image.isNull()){
+                lastImage=image;
+                auto *editor=new ImageEditor(QPixmap::fromImage(image));
+                connect(editor,&ImageEditor::requestOCR,this,&Controller::runOCR);
+                editor->show();return;
+            }
+        }
+        QFile::remove(output);
+        if(code!=3 && status==QProcess::NormalExit)
+            QMessageBox::warning(nullptr,"Scan failed",
+                "Unable to acquire an image. Check scanner power, WIA driver and permissions.\\n"+
+                QString::fromLocal8Bit(process->readAllStandardError()).left(1500));
+        process->deleteLater();
+    });
+    process->start("powershell.exe",{"-NoProfile","-STA","-Command",script});
+    progress->show();
+#endif
 }
 
 void Controller::openTextEditor() {
