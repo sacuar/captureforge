@@ -1,3 +1,17 @@
+# 1.0.3 (candidate — validation pending)
+
+- Launch directly into the tray and optional compact camera sidebar; no automatic home window.
+- A dedicated sidebar close button hides only the sidebar, with a tray toggle to restore it.
+- Draw distinct built-in icons even when external Material SVG assets are absent.
+- Opt-in, memory-only text clipboard history panel, including copy selected and clear.
+- Image editor sizes to its content; four-corner adjustable projective document straighten with undo.
+- Windows WIA scanner acquisition to the editor; network scanners require a Windows-compatible WIA driver.
+- Settings for clipboard history privacy and editor toolbar label visibility.
+- Release workflow fixes and pull-request Windows build checks.
+
+Known limitations: Windows scanner detection is WIA-dependent; no network protocol auto-discovery, no image clipboard history.
+See CI logs and Windows real-device verification before calling this a stable release.
+
 # 1.0.2
 
 - Compact image and text editor toolbars: 18 px icons, tighter spacing, hover tooltips and optional text labels via right-click.
