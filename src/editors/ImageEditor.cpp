@@ -19,6 +19,7 @@
 #include <QScreen>
 #include <QTransform>
 #include <QtMath>
+#include <QLineF>
 
 ImageEditor::ImageEditor(const QPixmap &p, QWidget *parent)
     : QMainWindow(parent), image(p.toImage()) {
