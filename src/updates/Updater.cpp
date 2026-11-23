@@ -23,6 +23,11 @@
 #include <QUrl>
 #include <QTimer>
 #include <QDir>
+#include <QCoreApplication>
+#include <QStandardPaths>
+#include <QSettings>
+#include <QFileInfo>
+#include <QJsonValue>
 namespace {
 const QString repo="https://github.com/sacuar/captureforge/releases";
 QNetworkRequest request(const QUrl &url){QNetworkRequest r(url);r.setRawHeader("User-Agent","CaptureForge-Windows");r.setAttribute(QNetworkRequest::RedirectPolicyAttribute,QNetworkRequest::NoLessSafeRedirectPolicy);r.setTransferTimeout(30000);return r;}
@@ -50,11 +55,11 @@ void Updater::check(bool manual){
   QString name="CaptureForge-"+ver+"-Setup-x64.exe",url=repo+"/download/"+tag+"/"+name,digest; qint64 size=0;
   for(const auto &v:obj.value("assets").toArray()){auto a=v.toObject();if(a.value("name").toString()==name&&a.value("browser_download_url").toString()==url){digest=a.value("digest").toString();size=a.value("size").toInteger();break;}}
   bool verified=QRegularExpression("^sha256:[0-9a-fA-F]{64}$").match(digest).hasMatch()&&size>0&&size<=536870912;
-  QDialog d;d.setWindowTitle("CaptureForge update");d.resize(570,460);QVBoxLayout l(&d);
+  QDialog d;d.setWindowTitle("CaptureForge update");d.resize(520,360);QVBoxLayout l(&d);
   l.addWidget(new QLabel("Installed "+qApp->applicationVersion()+" → Available "+ver));l.addWidget(new QLabel("What's new"));auto *notes=new QPlainTextEdit(obj.value("body").toString());notes->setReadOnly(true);l.addWidget(notes);
-  QDialogButtonBox buttons(QDialogButtonBox::Cancel);buttons.addButton(verified?"Download and install":"Open release page",QDialogButtonBox::AcceptRole);l.addWidget(&buttons);connect(&buttons,&QDialogButtonBox::accepted,&d,&QDialog::accept);connect(&buttons,&QDialogButtonBox::rejected,&d,&QDialog::reject);
+  QDialogButtonBox buttons(QDialogButtonBox::Cancel);buttons.addButton(verified?"Update CaptureForge":"Open release page",QDialogButtonBox::AcceptRole);l.addWidget(&buttons);connect(&buttons,&QDialogButtonBox::accepted,&d,&QDialog::accept);connect(&buttons,&QDialogButtonBox::rejected,&d,&QDialog::reject);
   if(d.exec()!=QDialog::Accepted)return;if(!verified){QDesktopServices::openUrl(QUrl(repo));return;}
-  busy=true;auto *temp=new QTemporaryDir; if(!temp->isValid()){delete temp;busy=false;return;}QString path=temp->filePath(name);auto *file=new QFile(path,this);
+  busy=true;auto *temp=new QTemporaryDir(QDir::tempPath()+"/captureforge-update-XXXXXX"); if(!temp->isValid()){delete temp;busy=false;return;}QString path=temp->filePath(name);auto *file=new QFile(path,this);
   if(!file->open(QIODevice::WriteOnly)){delete file;delete temp;busy=false;return;}
   auto *download=network.get(request(QUrl(url)));auto *dialog=new QProgressDialog("Downloading verified installer…","Cancel",0,100);dialog->setAutoClose(false);dialog->setAutoReset(false);dialog->setWindowModality(Qt::ApplicationModal);dialog->show();
   auto *hash=new QCryptographicHash(QCryptographicHash::Sha256);auto *count=new qint64(0);auto *bad=new bool(false);
@@ -66,8 +71,37 @@ void Updater::check(bool manual){
     if(download->bytesAvailable())consume();file->close();bool ok=!*bad&&download->error()==QNetworkReply::NoError&&*count==size&&hash->result().toHex()==digest.mid(7).toLatin1().toLower();
     delete hash;delete count;delete bad;file->deleteLater();download->deleteLater();dialog->deleteLater();busy=false;
     if(!ok){delete temp;QMessageBox::warning(nullptr,"Updates","Download cancelled or integrity verification failed.");return;}
-    if(QMessageBox::question(nullptr,"Install update","Installer verified. Close CaptureForge and start installation?")!=QMessageBox::Yes){delete temp;return;}
-    if(QProcess::startDetached(path,{"/NORESTART","/SP-"},temp->path())){temp->setAutoRemove(false);delete temp;qApp->quit();}else{delete temp;QMessageBox::warning(nullptr,"Updates","Could not launch installer.");}
+    const QString installedDir=QCoreApplication::applicationDirPath();
+    const QString helperSource=installedDir+"/inplace-update.ps1";
+    const QString helperTarget=temp->filePath("inplace-update.ps1");
+    if(!QFileInfo::exists(installedDir+"/CaptureForge.exe") ||
+       !QFileInfo::exists(helperSource) ||
+       !QFile::copy(helperSource,helperTarget)){
+      delete temp;
+      QMessageBox::warning(nullptr,"Updates",
+        "Automatic update is unavailable in this installation. Use the official release page instead.");
+      return;
+    }
+    if(QMessageBox::question(nullptr,"Apply verified update",
+        "Update this CaptureForge installation in place and restart it? "
+        "Your settings and shortcuts will be preserved.")!=QMessageBox::Yes){
+      delete temp;return;
+    }
+    const QStringList args={
+      "-NoProfile","-NonInteractive","-ExecutionPolicy","Bypass",
+      "-File",QDir::toNativeSeparators(helperTarget),
+      "-Installer",QDir::toNativeSeparators(path),
+      "-TargetDir",QDir::toNativeSeparators(installedDir),
+      "-ExpectedSha256",digest.mid(7).toLower(),
+      "-ParentPid",QString::number(QCoreApplication::applicationPid())
+    };
+    if(QProcess::startDetached("powershell.exe",args,temp->path())){
+      temp->setAutoRemove(false);delete temp;
+      qApp->quit();
+    }else{
+      delete temp;
+      QMessageBox::warning(nullptr,"Updates","Could not start in-place update helper. CaptureForge was not closed.");
+    }
   });
  });
 }
