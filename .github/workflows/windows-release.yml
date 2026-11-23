@@ -1,5 +1,7 @@
 name: CaptureForge Windows installer
 on:
+  pull_request:
+    branches: [main]
   workflow_dispatch:
     inputs:
       publish:
@@ -40,6 +42,16 @@ jobs:
           $p=Start-Process "$path/CaptureForge.exe" -ArgumentList '--smoke-test' -PassThru
           if(!$p.WaitForExit(30000)){$p.Kill();throw 'GUI smoke test timed out'}
           if($p.ExitCode -ne 0){throw 'GUI startup failed'}
+          if(!(Test-Path "$path/inplace-update.ps1")){throw 'In-place updater missing from installed app'}
+          # Verify upgrade uses the *existing* install location, not a second instance.
+          $stage=Join-Path $env:RUNNER_TEMP 'CaptureForgeUpdaterTest'
+          New-Item -ItemType Directory -Force $stage | Out-Null
+          $stagedInstaller=Join-Path $stage $exe.Name
+          Copy-Item $exe.FullName $stagedInstaller
+          $sha=(Get-FileHash $stagedInstaller -Algorithm SHA256).Hash.ToLowerInvariant()
+          $p=Start-Process 'powershell.exe' -ArgumentList @('-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',"`"$path/inplace-update.ps1`"",'-Installer',"`"$stagedInstaller`"",'-TargetDir',"`"$path`"",'-ExpectedSha256',$sha,'-ParentPid','0','-NoRelaunch') -Wait -PassThru
+          if($p.ExitCode -ne 0){throw "In-place updater test failed: $($p.ExitCode)"}
+          if(!(Test-Path "$path/CaptureForge.exe")){throw 'App missing after in-place update'}
           "$((Get-FileHash $exe.FullName -Algorithm SHA256).Hash.ToLower())  $($exe.Name)" | Set-Content "$($exe.FullName).sha256"
       - uses: actions/upload-artifact@v4
         with:

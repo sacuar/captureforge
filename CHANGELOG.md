@@ -1,3 +1,16 @@
+# 1.0.3 — In-place update maintenance
+
+- Existing installation receives a verified update in the same directory with one Update and restart action.
+- In-app updater uses the published GitHub SHA-256 digest and checks it again immediately before launching setup.
+- Update helper waits for the running application to exit and starts Inno Setup silently with the existing installation path.
+- After successful installation, CaptureForge relaunches without opening a startup launcher.
+- Same Inno Setup AppId and per-user installation location are retained to avoid duplicate application registrations.
+- User settings and shortcuts remain in the existing application profile.
+- Preserve original camera and tray architecture; add a small camera × dismiss control and tray reopen command.
+- Normal startup uses tray plus optional camera without showing a redundant home dialog.
+- Failure is written to the local update-error log rather than silently creating another installation.
+- This updater becomes available after upgrading from v1.0.2; v1.0.2 itself still has its original update behaviour.
+
 # 1.0.2
 
 - Compact image and text editor toolbars: 18 px icons, tighter spacing, hover tooltips and optional text labels via right-click.

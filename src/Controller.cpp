@@ -66,6 +66,21 @@ void Controller::buildFloating() {
     floating->setStyleSheet("QPushButton{background:rgba(25,25,28,225);border:2px solid #8a929e;border-radius:29px}"
                             "QPushButton:hover{background:#087fb9;border-color:white}");
     connect(floating, &QPushButton::clicked, this, &Controller::capture);
+    // Keep the original capture button. Add a child dismiss control only;
+    // do not replace the toolbar/tray architecture.
+    auto *dismiss = new QPushButton(QString::fromUtf8("×"), floating);
+    dismiss->setFixedSize(19, 19);
+    dismiss->move(36, 2);
+    dismiss->setAccessibleName("Hide floating camera");
+    dismiss->setToolTip("Hide floating camera (CaptureForge stays in the tray)");
+    dismiss->setStyleSheet("QPushButton{font-size:15px;font-weight:bold;color:white;"
+                           "background:#344050;border:1px solid #8893a0;border-radius:9px;padding:0;}"
+                           "QPushButton:hover{background:#b42330;}");
+    connect(dismiss, &QPushButton::clicked, this, [this] {
+        QSettings().setValue("ui/floating", false);
+        floating->hide();
+        if (tray && !tray->isVisible()) tray->show();
+    });
     auto a = QGuiApplication::primaryScreen()->availableGeometry();
     floating->move(a.right() - 80, a.center().y());
     QSettings s;
@@ -78,6 +93,12 @@ void Controller::buildTray() {
     auto *m = new QMenu;
     m->addAction(icon, "Open CaptureForge", this, &Controller::showHome);
     m->addAction(icon, "Capture Region", this, &Controller::capture);
+    m->addAction("Show floating camera", this, [this] {
+        QSettings().setValue("ui/floating", true);
+        floating->show();
+        floating->raise();
+        if (tray && !tray->isVisible()) tray->show();
+    });
     m->addAction("OCR Last Capture", this, [this] {
         if (lastImage.isNull())
             QMessageBox::information(nullptr, "OCR", "Capture an image first.");
