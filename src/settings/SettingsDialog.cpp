@@ -30,8 +30,10 @@ SettingsDialog::SettingsDialog(QWidget *p):QDialog(p){
  f->addRow("Capture region",region);f->addRow("OCR last image",ocr);f->addRow("Open text editor",editor);f->addRow("Settings",settingsKey);v->addLayout(f);
  v->addWidget(new QLabel("<b>Appearance / UI</b>"));
  theme=new QComboBox;theme->addItems({"Dark","Graphite","Light"});theme->setCurrentText(s.value("appearance/theme","Dark").toString());
- floating=new QCheckBox("Show floating capture button");floating->setChecked(s.value("ui/floating",true).toBool());
+ floating=new QCheckBox("Show dismissible sidebar camera");floating->setChecked(s.value("ui/floating",true).toBool());
  v->addWidget(theme);v->addWidget(floating);
+ toolbarLabels=new QCheckBox("Show names next to editor toolbar icons");toolbarLabels->setChecked(s.value("ui/toolbarLabels",false).toBool());v->addWidget(toolbarLabels);
+ clipboardEnabled=new QCheckBox("Remember clipboard text in memory (off by default; clears on exit)");clipboardEnabled->setChecked(s.value("clipboard/historyEnabled",false).toBool());v->addWidget(clipboardEnabled);
  updates=new QCheckBox("Check GitHub for updates on startup");updates->setChecked(s.value("updates/startup",true).toBool());v->addWidget(updates);
  plugins=new QCheckBox("Load trusted DLL add-ons automatically (restart required)");plugins->setChecked(s.value("plugins/enabled",false).toBool());v->addWidget(plugins);
  auto *tabs=new QTabWidget;auto *ocrTab=new QWidget;auto *ol=new QVBoxLayout(ocrTab);
@@ -48,5 +50,5 @@ SettingsDialog::SettingsDialog(QWidget *p):QDialog(p){
 void SettingsDialog::save(){
  QSettings s;s.setValue("shortcuts/region",region->keySequence().toString());s.setValue("shortcuts/ocr",ocr->keySequence().toString());
  s.setValue("shortcuts/textEditor",editor->keySequence().toString());s.setValue("shortcuts/settings",settingsKey->keySequence().toString());
- s.setValue("appearance/theme",theme->currentText());s.setValue("ui/floating",floating->isChecked());s.setValue("updates/startup",updates->isChecked());s.setValue("plugins/enabled",plugins->isChecked());s.setValue("ocr/executable",ocrExe->text());emit settingsChanged();accept();
+ s.setValue("appearance/theme",theme->currentText());s.setValue("ui/floating",floating->isChecked());s.setValue("ui/toolbarLabels",toolbarLabels->isChecked());s.setValue("clipboard/historyEnabled",clipboardEnabled->isChecked());s.setValue("updates/startup",updates->isChecked());s.setValue("plugins/enabled",plugins->isChecked());s.setValue("ocr/executable",ocrExe->text());emit settingsChanged();accept();
 }
