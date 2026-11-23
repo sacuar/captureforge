@@ -11,6 +11,7 @@ $dist='dist/CaptureForge'
 Remove-Item $dist -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force $dist | Out-Null
 Copy-Item build/Release/CaptureForge.exe,ocr.ps1,resources/camera.png,THIRD_PARTY_NOTICES.md $dist
+Copy-Item "$PSScriptRoot/update-helper.ps1" $dist
 & "$QtDir/bin/windeployqt.exe" --release --no-translations --compiler-runtime "$dist/CaptureForge.exe"
 if($LASTEXITCODE -ne 0){throw 'Qt deployment failed'}
 & "$PSScriptRoot/dependencies.ps1" -Destination $dist
