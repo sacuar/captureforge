@@ -15,12 +15,17 @@
 #include <QAction>
 #include <QStatusBar>
 #include <QSignalBlocker>
+#include <QGuiApplication>
+#include <QScreen>
+#include <QTransform>
+#include <QtMath>
+#include <QLineF>
 
 ImageEditor::ImageEditor(const QPixmap &p, QWidget *parent)
     : QMainWindow(parent), image(p.toImage()) {
     setAttribute(Qt::WA_DeleteOnClose);
     setWindowTitle("CaptureForge Image Editor");
-    resize(1100, 760);
+    resize(640, 480);
 
     label = new QLabel;
     label->setAlignment(Qt::AlignLeft | Qt::AlignTop);
@@ -43,6 +48,10 @@ ImageEditor::ImageEditor(const QPixmap &p, QWidget *parent)
     cropAction->setCheckable(true);
     connect(cropAction, &QAction::triggered, this, &ImageEditor::crop);
 
+    perspectiveAction = t->addAction(Icons::get("crop"),"Straighten document");
+    perspectiveAction->setCheckable(true);
+    connect(perspectiveAction,&QAction::triggered,this,&ImageEditor::togglePerspective);
+    t->addAction("Apply straighten",this,&ImageEditor::applyPerspective);
     t->addAction(Icons::get("rotate_left"),"Rotate Left", this, &ImageEditor::rotateLeft);
     t->addAction(Icons::get("flip"),"Flip", this, &ImageEditor::flip);
 
@@ -72,6 +81,7 @@ ImageEditor::ImageEditor(const QPixmap &p, QWidget *parent)
     });
     statusBar()->showMessage("Ready");
     refresh();
+    fitWindowToImage();
 }
 
 void ImageEditor::refresh() {
@@ -91,8 +101,79 @@ void ImageEditor::refresh() {
         }
     }
 
+    if(perspective && corners.size()==4){
+        QPainter p(&display);
+        p.setRenderHint(QPainter::Antialiasing);
+        p.setPen(QPen(QColor(0,175,255),3));
+        p.drawPolygon(corners);
+        p.setBrush(QColor(255,255,255));
+        for(const QPointF &corner:corners)p.drawEllipse(corner,6,6);
+    }
     label->setPixmap(QPixmap::fromImage(display));
     label->setFixedSize(image.size());
+}
+
+void ImageEditor::fitWindowToImage() {
+    if(image.isNull())return;
+    const QRect screen=QGuiApplication::screenAt(mapToGlobal(rect().center()))
+        ? QGuiApplication::screenAt(mapToGlobal(rect().center()))->availableGeometry()
+        : QGuiApplication::primaryScreen()->availableGeometry();
+    // Fit small captures exactly; do not open a full-screen blank canvas.
+    const int frameW=36, frameH=100;
+    resize(qBound(340,image.width()+frameW,qMax(340,screen.width()-100)),
+           qBound(180,image.height()+frameH,qMax(180,screen.height()-100)));
+}
+
+void ImageEditor::togglePerspective() {
+    perspective=perspectiveAction->isChecked();
+    if(perspective){
+        if(penAction->isChecked())penAction->setChecked(false);
+        if(cropAction->isChecked())cropAction->setChecked(false);
+        cropping=false;
+        corners=QPolygonF({QPointF(0,0),QPointF(image.width()-1,0),
+            QPointF(image.width()-1,image.height()-1),QPointF(0,image.height()-1)});
+        statusBar()->showMessage("Drag the four blue corner handles to document corners, then Apply straighten.");
+    }else{activeCorner=-1;statusBar()->showMessage("Straightening cancelled.");}
+    refresh();
+}
+
+void ImageEditor::applyPerspective() {
+    if(!perspective || corners.size()!=4 || image.isNull())return;
+    const qreal top=QLineF(corners[0],corners[1]).length();
+    const qreal bottom=QLineF(corners[3],corners[2]).length();
+    const qreal left=QLineF(corners[0],corners[3]).length();
+    const qreal right=QLineF(corners[1],corners[2]).length();
+    const int w=qRound(qMax(top,bottom)),h=qRound(qMax(left,right));
+    if(w<3 || h<3 || qint64(w)*h>100000000){
+        QMessageBox::warning(this,"Straighten","Document corners are invalid or the output is too large.");
+        return;
+    }
+    // Qt constructs the projective homography from the selected corners.
+    // Inverse-mapped resampling avoids gaps between source pixels.
+    QTransform destinationToSource;
+    const QPolygonF destination({QPointF(0,0),QPointF(w,0),QPointF(w,h),QPointF(0,h)});
+    if(!QTransform::quadToQuad(destination,corners,destinationToSource)){
+        QMessageBox::warning(this,"Straighten","Document corners cannot form a valid perspective transform.");
+        return;
+    }
+    bool invertible=false;
+    const QTransform sourceToDestination=destinationToSource.inverted(&invertible);
+    if(!invertible)return;
+    pushUndo();
+    QImage corrected(QSize(w,h),QImage::Format_ARGB32_Premultiplied);
+    corrected.fill(Qt::white);
+    QPainter painter(&corrected);
+    painter.setRenderHint(QPainter::SmoothPixmapTransform);
+    painter.setTransform(sourceToDestination);
+    painter.drawImage(QPointF(0,0),image);
+    painter.end();
+    image=corrected;
+    perspective=false;
+    activeCorner=-1;
+    perspectiveAction->setChecked(false);
+    refresh();
+    fitWindowToImage();
+    statusBar()->showMessage("Perspective correction applied. Undo is available.",3000);
 }
 
 void ImageEditor::pushUndo() {
@@ -143,6 +224,7 @@ void ImageEditor::finishCrop(const QPoint &point) {
         statusBar()->showMessage("Crop cancelled: selection was too small.", 2500);
     }
     refresh();
+    fitWindowToImage();
 }
 
 void ImageEditor::rotateLeft() {
@@ -151,6 +233,7 @@ void ImageEditor::rotateLeft() {
     t.rotate(-90);
     image = image.transformed(t);
     refresh();
+    fitWindowToImage();
 }
 
 void ImageEditor::flip() {
@@ -164,6 +247,7 @@ void ImageEditor::undo() {
         return;
     image = history.takeLast();
     refresh();
+    fitWindowToImage();
     statusBar()->showMessage("Undo applied.", 1800);
 }
 
@@ -173,6 +257,29 @@ QPoint ImageEditor::imagePoint(const QPoint &p) const {
 }
 
 bool ImageEditor::eventFilter(QObject *o, QEvent *e) {
+    if(o==label && perspective){
+        if(e->type()==QEvent::MouseButtonPress){
+            const auto *m=static_cast<QMouseEvent*>(e);
+            if(m->button()==Qt::LeftButton){
+                const QPointF position=m->position();
+                qreal distance=1e20;
+                activeCorner=-1;
+                for(int i=0;i<corners.size();++i){
+                    const qreal d=QLineF(position,corners[i]).length();
+                    if(d<distance && d<28){distance=d;activeCorner=i;}
+                }
+                return true;
+            }
+        }
+        if(e->type()==QEvent::MouseMove && activeCorner>=0){
+            const auto *m=static_cast<QMouseEvent*>(e);
+            corners[activeCorner]=imagePoint(m->position().toPoint());
+            refresh();return true;
+        }
+        if(e->type()==QEvent::MouseButtonRelease){
+            activeCorner=-1;return true;
+        }
+    }
     if (o == label && cropping) {
         if (e->type() == QEvent::MouseButtonPress) {
             auto *m = static_cast<QMouseEvent*>(e);

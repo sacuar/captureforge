@@ -47,7 +47,7 @@ int main(int argc,char *argv[]){
             }
         });
     }
-    if(!app.arguments().contains("--background"))controller.showHome();
+    // Normal startup is unobtrusive: tray plus optional sidebar only.
     if(app.arguments().contains("--smoke-test"))QTimer::singleShot(1500,&app,&QApplication::quit);
     return app.exec();
 }

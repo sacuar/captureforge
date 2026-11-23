@@ -1,6 +1,7 @@
 #pragma once
 #include <QMainWindow>
 #include <QImage>
+#include <QPolygonF>
 
 class QLabel;
 class QScrollArea;
@@ -22,6 +23,9 @@ private slots:
     void flip();
     void copy();
     void undo();
+    void togglePerspective();
+    void applyPerspective();
+    void fitWindowToImage();
 
 private:
     void refresh();
@@ -33,11 +37,15 @@ private:
     QScrollArea *scroll = nullptr;
     QAction *cropAction = nullptr;
     QAction *penAction = nullptr;
+    QAction *perspectiveAction = nullptr;
     QImage image;
     QList<QImage> history;
     bool drawing = false;
     QPoint last;
 
+    bool perspective = false;
+    int activeCorner = -1;
+    QPolygonF corners;
     bool cropping = false;
     bool cropDragging = false;
     QPoint cropStart;

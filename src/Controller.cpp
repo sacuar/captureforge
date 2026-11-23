@@ -22,10 +22,23 @@
 #include "plugins/PluginInterface.h"
 #include <QApplication>
 #include <QClipboard>
+#include <QMimeData>
 #include <QHotkey>
 #include <QSystemTrayIcon>
 #include <QMenu>
 #include <QPushButton>
+#include <QWidget>
+#include <QAction>
+#include <QGuiApplication>
+#include <QInputDialog>
+#include <QCheckBox>
+#include <QListWidget>
+#include <QListWidgetItem>
+#include <QStandardPaths>
+#include <QTemporaryDir>
+#include <QDateTime>
+#include <QProgressDialog>
+#include <QTextStream>
 #include <QSettings>
 #include <QTimer>
 #include <QScreen>
@@ -51,33 +64,82 @@ Controller::Controller() {
     if (preferences.value("plugins/enabled", false).toBool()) pluginManager->reload();
     buildFloating();
     buildTray();
+    connect(QApplication::clipboard(), &QClipboard::dataChanged, this, [this]{
+        if (!QSettings().value("clipboard/historyEnabled",false).toBool() || updatingClipboard) return;
+        const auto *mime=QApplication::clipboard()->mimeData();
+        if (!mime || !mime->hasText()) return;
+        QString value=mime->text();
+        if(value.isEmpty() || value.size()>16384) return;
+        clipboardHistory.removeAll(value);
+        clipboardHistory.prepend(value);
+        while(clipboardHistory.size()>qBound(1,QSettings().value("clipboard/maxItems",20).toInt(),100))
+            clipboardHistory.removeLast();
+    });
     registerHotkeys();
     updater = new Updater(this);
     if (preferences.value("updates/startup",true).toBool()) QTimer::singleShot(2500,updater,[this]{updater->check(false);});
 }
 
 void Controller::buildFloating() {
-    floating = new QPushButton;
-    floating->setIcon(QIcon(appFile("camera.png")));
-    floating->setIconSize(QSize(34, 34));
+    // Closing the sidebar only hides this optional control, never the tray.
+    floating = new QWidget;
+    floating->setObjectName("CaptureSidebar");
     floating->setWindowFlags(Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint);
-    floating->setFixedSize(58, 58);
-    floating->setToolTip("CaptureForge — click camera to capture region");
-    floating->setStyleSheet("QPushButton{background:rgba(25,25,28,225);border:2px solid #8a929e;border-radius:29px}"
-                            "QPushButton:hover{background:#087fb9;border-color:white}");
-    connect(floating, &QPushButton::clicked, this, &Controller::capture);
-    auto a = QGuiApplication::primaryScreen()->availableGeometry();
-    floating->move(a.right() - 80, a.center().y());
-    QSettings s;
-    floating->setVisible(s.value("ui/floating", true).toBool());
+    floating->setAttribute(Qt::WA_QuitOnClose, false);
+    floating->setFixedSize(73, 43);
+    floating->setStyleSheet(
+        "#CaptureSidebar{background:#222b35;border:1px solid #53616e;border-radius:12px;}"
+        "#CaptureSidebar QPushButton{border:0;background:transparent;padding:0;border-radius:8px;}"
+        "#CaptureSidebar QPushButton:hover{background:#37556e;}"
+    );
+    auto *row = new QHBoxLayout(floating);
+    row->setContentsMargins(4,4,4,4);
+    row->setSpacing(2);
+    auto *camera = new QPushButton(floating);
+    camera->setIcon(Icons::get("camera"));
+    camera->setIconSize(QSize(24,24));
+    camera->setFixedSize(38,33);
+    camera->setAccessibleName("Capture region");
+    camera->setToolTip("Capture region · Ctrl+Shift+S");
+    row->addWidget(camera);
+    connect(camera, &QPushButton::clicked, this, &Controller::capture);
+    auto *dismiss = new QPushButton(floating);
+    dismiss->setIcon(Icons::get("close"));
+    dismiss->setIconSize(QSize(15,15));
+    dismiss->setFixedSize(21,25);
+    dismiss->setAccessibleName("Hide sidebar (keep tray running)");
+    dismiss->setToolTip("Hide sidebar; CaptureForge stays in the system tray");
+    row->addWidget(dismiss);
+    connect(dismiss, &QPushButton::clicked, this, [this]{
+        QSettings().setValue("ui/floating", false);
+        floating->hide();
+        if (floatingToggle) floatingToggle->setChecked(false);
+        if (tray && !tray->isVisible()) tray->show();
+    });
+    const QRect a = QGuiApplication::primaryScreen()->availableGeometry();
+    const QSettings s;
+    const int x = qBound(a.left(), s.value("ui/sidebarX",a.right()-92).toInt(),a.right()-floating->width());
+    const int y = qBound(a.top(), s.value("ui/sidebarY",a.center().y()).toInt(),a.bottom()-floating->height());
+    floating->move(x,y);
+    floating->setVisible(s.value("ui/floating",true).toBool());
 }
 
 void Controller::buildTray() {
     QIcon icon(appFile("camera.png"));
+    if (icon.isNull()) icon = Icons::get("camera");
     tray = new QSystemTrayIcon(icon, this);
     auto *m = new QMenu;
-    m->addAction(icon, "Open CaptureForge", this, &Controller::showHome);
-    m->addAction(icon, "Capture Region", this, &Controller::capture);
+    m->addAction(Icons::get("crop"), "Capture Region", this, &Controller::capture);
+    m->addAction(Icons::get("document_scanner"), "Scan from scanner…", this, &Controller::scanDocument);
+    m->addAction(Icons::get("history"), "Clipboard history…", this, &Controller::showClipboardHistory);
+    floatingToggle = m->addAction(Icons::get("camera"), "Show sidebar camera");
+    floatingToggle->setCheckable(true);
+    floatingToggle->setChecked(QSettings().value("ui/floating",true).toBool());
+    connect(floatingToggle,&QAction::toggled,this,[this](bool show){
+        QSettings().setValue("ui/floating",show);
+        if(floating)floating->setVisible(show);
+        if(tray && !tray->isVisible())tray->show();
+    });
     m->addAction("OCR Last Capture", this, [this] {
         if (lastImage.isNull())
             QMessageBox::information(nullptr, "OCR", "Capture an image first.");
@@ -99,6 +161,12 @@ void Controller::buildTray() {
     tray->setToolTip("CaptureForge — click to capture, right-click for menu");
     connect(tray, &QSystemTrayIcon::activated, this, &Controller::trayActivated);
     tray->show();
+    // Explorer may create the notification area after the app starts.
+    auto *retry = new QTimer(this);
+    connect(retry,&QTimer::timeout,this,[this]{
+        if (tray && QSystemTrayIcon::isSystemTrayAvailable() && !tray->isVisible()) tray->show();
+    });
+    retry->start(5000);
 }
 
 void Controller::trayActivated(QSystemTrayIcon::ActivationReason reason) {
@@ -131,36 +199,22 @@ void Controller::registerHotkeys() {
     connect(hkSettings, &QHotkey::activated, this, &Controller::openSettings);
 }
 
-void Controller::showHome(){
-    if(!home){
-        home=new QDialog;home->setWindowTitle("CaptureForge");home->resize(410,220);
-        auto *layout=new QVBoxLayout(home);layout->setContentsMargins(14,14,14,14);layout->setSpacing(8);
-        auto *heading=new QLabel("<span style='font-size:20px;font-weight:600'>CaptureForge</span><br>Capture, annotate and recognise text.");layout->addWidget(heading);
-        auto *row=new QHBoxLayout;row->setSpacing(5);layout->addLayout(row);
-        auto make=[this,row](const QString &name,const QString &icon,auto action){
-            auto *button=new QToolButton(home);button->setText(name);button->setToolTip(name);button->setAccessibleName(name);
-            button->setIcon(Icons::get(icon));button->setIconSize(QSize(20,20));button->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
-            button->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Fixed);button->setMinimumHeight(52);
-            row->addWidget(button);connect(button,&QToolButton::clicked,this,action);
-        };
-        make("Capture","crop",[this]{capture();});
-        make("OCR","document_scanner",[this]{if(lastImage.isNull())QMessageBox::information(home,"OCR","Capture an image first.");else runOCR(lastImage);});
-        make("Text editor","edit",[this]{openTextEditor();});
-        auto *footer=new QHBoxLayout;footer->setSpacing(4);layout->addLayout(footer);
-        auto *hint=new QLabel("Version "+qApp->applicationVersion());footer->addWidget(hint);footer->addStretch();
-        auto *settings=new QToolButton(home);settings->setIcon(Icons::get("settings"));settings->setText("Settings");settings->setToolTip("Settings");settings->setAccessibleName("Settings");settings->setIconSize(QSize(18,18));
-        connect(settings,&QToolButton::clicked,this,&Controller::openSettings);footer->addWidget(settings);
-        auto *more=new QToolButton(home);more->setText("More");more->setToolButtonStyle(Qt::ToolButtonTextOnly);more->setPopupMode(QToolButton::InstantPopup);more->setAccessibleName("More tools");
-        auto *menu=new QMenu(more);menu->addAction(Icons::get("extension"),"Manage add-ons",this,[this]{showPluginStatus();});menu->addAction(Icons::get("update"),"Check for updates",this,[this]{updater->check(true);});more->setMenu(menu);footer->addWidget(more);
-        layout->addWidget(new QLabel("Capture shortcut: "+QSettings().value("shortcuts/region","Ctrl+Shift+S").toString()));layout->addStretch();
+void Controller::showHome() {
+    // Desktop shortcut / second-instance activation reveals the sidebar.
+    if (floating) {
+        if (floatingToggle) floatingToggle->setChecked(true);
+        floating->show();
+        floating->raise();
+        floating->activateWindow();
     }
-    home->show();home->raise();home->activateWindow();
 }
 
 void Controller::reloadSettings() {
     registerHotkeys();
     QSettings s;
+    if (floatingToggle) floatingToggle->setChecked(s.value("ui/floating",true).toBool());
     floating->setVisible(s.value("ui/floating", true).toBool());
+    if (tray && !tray->isVisible()) tray->show();
     ThemeManager::apply(*qApp, s.value("appearance/theme", "Dark").toString());
 }
 
@@ -169,6 +223,114 @@ void Controller::openSettings() {
     d->setAttribute(Qt::WA_DeleteOnClose);
     connect(d, &SettingsDialog::settingsChanged, this, &Controller::reloadSettings);
     d->show();
+}
+
+void Controller::showClipboardHistory() {
+    QDialog d;
+    d.setWindowTitle("Clipboard history · this session only");
+    auto *layout=new QVBoxLayout(&d);
+    layout->addWidget(new QLabel("Optional local text history. Disabled by default; never uploaded or saved to disk."));
+    auto *enabled=new QCheckBox("Remember text copied while CaptureForge is running");
+    enabled->setChecked(QSettings().value("clipboard/historyEnabled",false).toBool());
+    layout->addWidget(enabled);
+    auto *items=new QListWidget;
+    for(const QString &value: clipboardHistory) {
+        auto *item=new QListWidgetItem(value.left(130).replace(QChar(10),' '),items);
+        item->setToolTip(value.left(1000));
+        item->setData(Qt::UserRole,value);
+    }
+    items->setMinimumSize(420,175);
+    layout->addWidget(items);
+    auto *row=new QHBoxLayout;
+    auto *restore=new QPushButton("Copy selected");
+    auto *clear=new QPushButton("Clear history");
+    auto *close=new QPushButton("Close");
+    row->addWidget(restore);row->addWidget(clear);row->addStretch();row->addWidget(close);
+    layout->addLayout(row);
+    connect(enabled,&QCheckBox::toggled,&d,[this](bool v){
+        QSettings().setValue("clipboard/historyEnabled",v);
+        if(!v)clipboardHistory.clear();
+    });
+    connect(restore,&QPushButton::clicked,&d,[this,items]{
+        if(!items->currentItem())return;
+        updatingClipboard=true;
+        QApplication::clipboard()->setText(items->currentItem()->data(Qt::UserRole).toString());
+        updatingClipboard=false;
+    });
+    connect(clear,&QPushButton::clicked,&d,[this,items]{clipboardHistory.clear();items->clear();});
+    connect(close,&QPushButton::clicked,&d,&QDialog::accept);
+    d.exec();
+}
+
+void Controller::scanDocument() {
+#ifndef Q_OS_WIN
+    QMessageBox::information(nullptr,"Scanner support",
+        "Scanner acquisition currently uses Windows Image Acquisition (WIA). "
+        "On this platform, import a scanner image through the image editor.");
+#else
+    // Windows enumerates locally installed WIA scanners, including network
+    // devices exposed via compatible WIA drivers. No arbitrary network probing.
+    auto *process=new QProcess(this);
+    const QString output=QStandardPaths::writableLocation(QStandardPaths::TempLocation)
+        +"/CaptureForge-scan-"+QUuid::createUuid().toString(QUuid::WithoutBraces)+".png";
+    const QString script=QString::fromUtf8(R"PS(
+$ErrorActionPreference='Stop'
+try {
+ $manager=New-Object -ComObject WIA.DeviceManager
+ $scanners=@($manager.DeviceInfos | Where-Object { $_.Type -eq 1 })
+ if ($scanners.Count -eq 0) { throw 'No WIA-compatible scanners were found. Install your scanner driver in Windows first.' }
+ $devices=@()
+ foreach($deviceInfo in $scanners){
+   $name=try{$deviceInfo.Properties.Item('Name').Value}catch{'Scanner'}
+   $devices+=("$name")
+ }
+ $chosen=0
+ if($devices.Count -gt 1){
+   Add-Type -AssemblyName Microsoft.VisualBasic
+   $reply=[Microsoft.VisualBasic.Interaction]::InputBox(
+       ('Available scanners: '+ (($devices | ForEach-Object { [array]::IndexOf($devices,$_).ToString()+': '+$_ }) -join '; ')),
+       'CaptureForge - choose scanner index','0')
+   if($reply -notmatch '^\d+$'){exit 3}
+   $chosen=[int]$reply
+   if($chosen -ge $scanners.Count){throw 'Invalid scanner selection'}
+ }
+ $dev=$scanners[$chosen].Connect()
+ $item=$dev.Items.Item(1)
+ $scan=$item.Transfer('{B96B3CAF-0728-11D3-9D7B-0000F81EF32E}')
+ $scan.SaveFile('%1')
+ Write-Output '%1'
+}catch{Write-Error $_.Exception.Message; exit 1}
+)PS").arg(QDir::toNativeSeparators(output).replace("'","''"));
+    auto *progress=new QProgressDialog("Discovering WIA scanners and acquiring image…","Cancel",0,0);
+    progress->setWindowTitle("CaptureForge Scan");
+    progress->setAttribute(Qt::WA_DeleteOnClose, false);
+    progress->setMinimumDuration(0);
+    progress->setWindowModality(Qt::NonModal);
+    connect(progress,&QProgressDialog::canceled,process,&QProcess::kill);
+    connect(process,QOverload<int,QProcess::ExitStatus>::of(&QProcess::finished),
+        this,[this,process,progress,output](int code,QProcess::ExitStatus status){
+        progress->close();
+        progress->deleteLater();
+        process->deleteLater();
+        if(code==0 && status==QProcess::NormalExit && QFileInfo::exists(output)){
+            QImage image(output);
+            QFile::remove(output);
+            if(!image.isNull()){
+                lastImage=image;
+                auto *editor=new ImageEditor(QPixmap::fromImage(image));
+                connect(editor,&ImageEditor::requestOCR,this,&Controller::runOCR);
+                editor->show();return;
+            }
+        }
+        QFile::remove(output);
+        if(code!=3 && status==QProcess::NormalExit)
+            QMessageBox::warning(nullptr,"Scan failed",
+                "Unable to acquire an image. Check scanner power, WIA driver and permissions.\\n"+
+                QString::fromLocal8Bit(process->readAllStandardError()).left(1500));
+    });
+    process->start("powershell.exe",{"-NoProfile","-STA","-Command",script});
+    progress->show();
+#endif
 }
 
 void Controller::openTextEditor() {

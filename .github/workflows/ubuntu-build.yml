@@ -40,11 +40,16 @@ jobs:
         run: bash packaging/linux/build-deb.sh
       - name: Publish Ubuntu package to existing versioned GitHub release
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view v1.0.2 >/dev/null
-          gh release upload v1.0.2 installer/linux/*.deb installer/linux/*.sha256
+          $version = [regex]::Match((Get-Content CMakeLists.txt -Raw), 'project\(CaptureForge VERSION ([0-9.]+)').Groups[1].Value
+          if ([string]::IsNullOrEmpty($version)) { throw 'Missing version' }
+          gh release view "v$version" *> $null
+          if ($LASTEXITCODE -ne 0) { throw "Release v$version not found; refusing to upload package to an old tag" }
+          gh release upload "v$version" installer/linux/*.deb installer/linux/*.sha256 --clobber
+          if ($LASTEXITCODE -ne 0) { throw "Ubuntu release upload failed" }
       - uses: actions/upload-artifact@v4
         with:
           name: CaptureForge-Ubuntu-24.04-amd64

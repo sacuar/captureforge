@@ -1,10 +1,13 @@
 #pragma once
 #include <QObject>
 #include <QImage>
+#include <QStringList>
 #include <QSystemTrayIcon>
 
 class QHotkey;
 class QPushButton;
+class QWidget;
+class QAction;
 class QDialog;
 class CaptureOverlay;
 class PluginManager;
@@ -21,6 +24,8 @@ private slots:
     void openSettings();
     void reloadSettings();
     void openTextEditor();
+    void showClipboardHistory();
+    void scanDocument();
     void runOCR(const QImage&);
     void trayActivated(QSystemTrayIcon::ActivationReason reason);
 
@@ -38,10 +43,13 @@ private:
     QHotkey *hkText = nullptr;
     QHotkey *hkSettings = nullptr;
     QSystemTrayIcon *tray = nullptr;
-    QPushButton *floating = nullptr;
+    QWidget *floating = nullptr;
+    QAction *floatingToggle = nullptr;
     CaptureOverlay *overlay = nullptr;
     PluginManager *pluginManager = nullptr;
     QImage lastImage;
+    QStringList clipboardHistory;
+    bool updatingClipboard = false;
     Updater *updater=nullptr;
     QDialog *home=nullptr;
     bool ocrBusy=false, capturePending=false;

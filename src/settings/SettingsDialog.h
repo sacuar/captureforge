@@ -8,5 +8,5 @@ signals: void settingsChanged();
 private slots: void save();
 private:
  QKeySequenceEdit *region,*ocr,*editor,*settingsKey;
- QComboBox *theme; QCheckBox *floating,*updates,*plugins; QLineEdit *ocrExe;
+ QComboBox *theme; QCheckBox *floating,*updates,*plugins,*clipboardEnabled,*toolbarLabels; QLineEdit *ocrExe;
 };
