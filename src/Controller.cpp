@@ -235,7 +235,7 @@ void Controller::showClipboardHistory() {
     layout->addWidget(enabled);
     auto *items=new QListWidget;
     for(const QString &value: clipboardHistory) {
-        auto *item=new QListWidgetItem(value.left(130).replace('\\n',' '),items);
+        auto *item=new QListWidgetItem(value.left(130).replace(QChar(10),' '),items);
         item->setToolTip(value.left(1000));
         item->setData(Qt::UserRole,value);
     }
