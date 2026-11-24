@@ -177,7 +177,7 @@ void Controller::reloadSettings() {
     QSettings s;
     floating->setVisible(s.value("ui/floating",true).toBool());
     floating->refreshAppearance();
-    ThemeManager::apply(*qApp, s.value("appearance/theme", "Dark").toString());
+    ThemeManager::apply(*qApp, s.value("appearance/theme", "Ocean").toString());
 }
 
 void Controller::openSettings() {

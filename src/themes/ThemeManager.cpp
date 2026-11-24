@@ -1,7 +1,7 @@
 #include "ThemeManager.h"
 #include <QApplication>
 #include <QSettings>
-void ThemeManager::applySavedTheme(QApplication &app){QSettings s;apply(app,s.value("appearance/theme","Dark").toString());}
+void ThemeManager::applySavedTheme(QApplication &app){QSettings s;apply(app,s.value("appearance/theme","Ocean").toString());}
 void ThemeManager::apply(QApplication &app,const QString &name){
  bool light=name=="Light";bool ocean=name=="Ocean";QString bg=light?"#f5f8fa":ocean?"#102735":name=="Graphite"?"#25282d":"#1c2027", panel=light?"#ffffff":ocean?"#163748":"#272e38", fg=light?"#213044":"#edf2f7", edge=light?"#d4dbe5":ocean?"#376275":"#3a4655", hover=light?"#e5edf7":ocean?"#1c586b":"#354253";
  app.setStyleSheet(QString(R"(
