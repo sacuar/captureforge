@@ -43,8 +43,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view v1.0.2 >/dev/null
-          gh release upload v1.0.2 installer/linux/*.deb installer/linux/*.sha256
+          gh release view v1.0.3 >/dev/null
+          gh release upload v1.0.3 installer/linux/*.deb installer/linux/*.sha256
       - uses: actions/upload-artifact@v4
         with:
           name: CaptureForge-Ubuntu-24.04-amd64

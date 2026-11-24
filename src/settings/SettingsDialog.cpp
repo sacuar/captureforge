@@ -29,8 +29,8 @@ SettingsDialog::SettingsDialog(QWidget *p):QDialog(p){
  settingsKey->setKeySequence(QKeySequence(s.value("shortcuts/settings","Ctrl+Shift+,").toString()));
  f->addRow("Capture region",region);f->addRow("OCR last image",ocr);f->addRow("Open text editor",editor);f->addRow("Settings",settingsKey);v->addLayout(f);
  v->addWidget(new QLabel("<b>Appearance / UI</b>"));
- theme=new QComboBox;theme->addItems({"Dark","Graphite","Light"});theme->setCurrentText(s.value("appearance/theme","Dark").toString());
- floating=new QCheckBox("Show floating capture button");floating->setChecked(s.value("ui/floating",true).toBool());
+ theme=new QComboBox;theme->addItems({"Ocean","Graphite","Light","Dark"});theme->setCurrentText(s.value("appearance/theme","Ocean").toString());
+ floating=new QCheckBox("Show floating quick-tools drawer (close × hides only the drawer)");floating->setChecked(s.value("ui/floating",true).toBool());
  v->addWidget(theme);v->addWidget(floating);
  updates=new QCheckBox("Check GitHub for updates on startup");updates->setChecked(s.value("updates/startup",true).toBool());v->addWidget(updates);
  plugins=new QCheckBox("Load trusted DLL add-ons automatically (restart required)");plugins->setChecked(s.value("plugins/enabled",false).toBool());v->addWidget(plugins);

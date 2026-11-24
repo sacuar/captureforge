@@ -43,11 +43,14 @@ int main(int argc,char *argv[]){
             while(local.hasPendingConnections()){
                 auto *socket=local.nextPendingConnection();
                 QObject::connect(socket,&QLocalSocket::disconnected,socket,&QObject::deleteLater);
-                controller.showHome();socket->disconnectFromServer();
+                controller.showDrawer();socket->disconnectFromServer();
             }
         });
     }
-    if(!app.arguments().contains("--background"))controller.showHome();
+    // Starts quietly with the system tray and optional floating camera.
+    // A normal window is shown only when the desktop has no system tray.
+    if(!controller.trayAvailable() && !app.arguments().contains("--smoke-test"))
+        controller.showHome();
     if(app.arguments().contains("--smoke-test"))QTimer::singleShot(1500,&app,&QApplication::quit);
     return app.exec();
 }

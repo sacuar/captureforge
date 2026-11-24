@@ -4,7 +4,7 @@
 #include <QSystemTrayIcon>
 
 class QHotkey;
-class QPushButton;
+class FloatingDrawer;
 class QDialog;
 class CaptureOverlay;
 class PluginManager;
@@ -15,6 +15,8 @@ class Controller : public QObject {
 public:
     Controller();
     void showHome();
+    void showDrawer();
+    bool trayAvailable() const;
 
 private slots:
     void capture();
@@ -38,7 +40,7 @@ private:
     QHotkey *hkText = nullptr;
     QHotkey *hkSettings = nullptr;
     QSystemTrayIcon *tray = nullptr;
-    QPushButton *floating = nullptr;
+    FloatingDrawer *floating = nullptr;
     CaptureOverlay *overlay = nullptr;
     PluginManager *pluginManager = nullptr;
     QImage lastImage;
