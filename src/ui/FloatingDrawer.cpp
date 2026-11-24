@@ -96,7 +96,6 @@ FloatingDrawer::FloatingDrawer(QWidget *parent):QWidget(parent) {
 }
 
 void FloatingDrawer::setExpanded(bool enabled) {
-    if(expanded_==enabled && height()==(enabled?OpenHeight:ClosedHeight))return;
     expanded_=enabled;
     tools_->setVisible(enabled);
     expandButton_->setText(enabled?QString::fromUtf8("⌃"):QString::fromUtf8("⌄"));
