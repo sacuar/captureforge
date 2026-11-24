@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(CaptureForge VERSION 1.0.2 LANGUAGES CXX)
+project(CaptureForge VERSION 1.0.3 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
@@ -24,6 +24,7 @@ qt_add_executable(CaptureForge WIN32
  src/ocr/Ocr.cpp src/ocr/Ocr.h
  src/updates/Updater.cpp src/updates/Updater.h
  src/ui/Icons.cpp src/ui/Icons.h
+ src/ui/FloatingDrawer.cpp src/ui/FloatingDrawer.h
 )
 if(WIN32)
  target_sources(CaptureForge PRIVATE windows.rc)

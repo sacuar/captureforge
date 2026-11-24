@@ -1,3 +1,12 @@
+# 1.0.3
+
+- Start quietly in the tray; do not open the home window automatically.
+- Compact translucent orange–teal–blue floating camera drawer with dedicated × hide control; closing it never quits the app or hides the tray icon.
+- Tray left-click reveals floating controls; right-click offers capture, OCR, text editor, settings, add-ons and quit.
+- Expand/collapse three colour-coded compact Google Material actions. Move the floating drawer without changing the windows underneath.
+- Ocean theme and compact menus. No frameless fullscreen overlays except during an explicit region capture.
+- Preserve hotkeys, OCR, image editor, settings and user-approved installation updates.
+
 # 1.0.2
 
 - Compact image and text editor toolbars: 18 px icons, tighter spacing, hover tooltips and optional text labels via right-click.

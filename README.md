@@ -4,7 +4,7 @@
 
 # CaptureForge
 
-**A Windows capture workspace for screenshots, annotations and local text recognition.**
+**A compact desktop capture workspace for screenshots, annotations and local text recognition.**
 
 [![Windows](https://img.shields.io/badge/platform-Windows%2010%2F11-2563eb)](https://github.com/sacuar/captureforge#install--try) [![Latest release](https://img.shields.io/github/v/release/sacuar/captureforge?label=latest%20release)](https://github.com/sacuar/captureforge/releases/latest) [![Issues](https://img.shields.io/github/issues/sacuar/captureforge)](https://github.com/sacuar/captureforge/issues)
 
@@ -76,3 +76,7 @@ During setup, choose **Review previous builds → Scan and review old builds**. 
 
 ## Compact interface (1.0.2)
 Capture, OCR and Text editor are grouped in the launcher. Settings is alongside More (add-ons and updates). Editor toolbars use compact icons with tooltips by default. Right-click an editor toolbar and toggle **Show toolbar labels** to restore icon and text mode; the preference is remembered for new editor windows.
+
+## Version 1.0.3 — tray and floating drawer
+
+CaptureForge runs quietly: there is no startup home window. The system tray icon remains available when the floating camera is closed. Click the tray icon to reopen the floating camera, right-click it for the full actions menu, or use the configured Ctrl+Shift+S capture shortcut. The floating drawer has a dedicated **×** control to hide only the drawer; **Quit** in the tray menu exits the process. Expand the drawer to reveal OCR, text editor and settings. Compact Ocean (orange, teal and blue) colours are opt-in via Settings; other themes remain available. The drawer occupies only its small window, with translucent artwork rather than a full-screen overlay. On systems without a tray, a tools window is shown as a fallback.

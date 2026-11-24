@@ -1,9 +1,9 @@
 #include "ThemeManager.h"
 #include <QApplication>
 #include <QSettings>
-void ThemeManager::applySavedTheme(QApplication &app){QSettings s;apply(app,s.value("appearance/theme","Dark").toString());}
+void ThemeManager::applySavedTheme(QApplication &app){QSettings s;apply(app,s.value("appearance/theme","Ocean").toString());}
 void ThemeManager::apply(QApplication &app,const QString &name){
- bool light=name=="Light";QString bg=light?"#f5f6f8":name=="Graphite"?"#25282d":"#1c2027", panel=light?"#ffffff":"#272e38", fg=light?"#213044":"#edf2f7", edge=light?"#d4dbe5":"#3a4655", hover=light?"#e5edf7":"#354253";
+ bool light=name=="Light";bool ocean=name=="Ocean";QString bg=light?"#f5f8fa":ocean?"#102735":name=="Graphite"?"#25282d":"#1c2027", panel=light?"#ffffff":ocean?"#163748":"#272e38", fg=light?"#213044":"#edf2f7", edge=light?"#d4dbe5":ocean?"#376275":"#3a4655", hover=light?"#e5edf7":ocean?"#1c586b":"#354253";
  app.setStyleSheet(QString(R"(
  QWidget {background:%1;color:%3;font-family:'Segoe UI';font-size:13px;}
  QToolBar {border:0;spacing:2px;padding:3px 5px;}
@@ -20,7 +20,8 @@ void ThemeManager::apply(QApplication &app,const QString &name){
  QScrollBar::handle:hover {background:#6485aa;} QScrollBar::add-line,QScrollBar::sub-line {width:0;height:0;}
  QScrollBar::add-page,QScrollBar::sub-page {background:transparent;}
  QTabBar::tab {padding:9px 15px;border-radius:6px;} QTabBar::tab:selected {background:%2;border-bottom:2px solid #246bc0;}
- QMenu {background:%2;border:1px solid %4;padding:5px;} QMenu::item {padding:7px 22px;} QMenu::item:selected {background:%5;}
+ QMenu {background:%2;border:1px solid %4;padding:4px;border-radius:7px;} QMenu::item {padding:5px 15px;} QMenu::item:selected {background:%5;}
+ QWidget#captureDrawer {background:transparent;}
  QStatusBar {border-top:1px solid %4;} QDialogButtonBox QPushButton {background:%2;border:1px solid %4;min-width:75px;}
  )").arg(bg,panel,fg,edge,hover));
 }

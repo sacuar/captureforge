@@ -36,6 +36,7 @@ jobs:
         run: |
           xvfb-run -a ./build-ubuntu/CaptureForge --ocr-self-test
           xvfb-run -a ./build-ubuntu/CaptureForge --smoke-test
+          xvfb-run -a ./build-ubuntu/CaptureForge --drawer-self-test
       - name: Build Ubuntu package
         run: bash packaging/linux/build-deb.sh
       - name: Publish Ubuntu package to existing versioned GitHub release
@@ -43,8 +44,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view v1.0.2 >/dev/null
-          gh release upload v1.0.2 installer/linux/*.deb installer/linux/*.sha256
+          gh release view v1.0.3 >/dev/null
+          gh release upload v1.0.3 installer/linux/*.deb installer/linux/*.sha256
       - uses: actions/upload-artifact@v4
         with:
           name: CaptureForge-Ubuntu-24.04-amd64

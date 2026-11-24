@@ -2,6 +2,7 @@
 #include "ocr/Ocr.h"
 #include "updates/Updater.h"
 #include "ui/Icons.h"
+#include "ui/FloatingDrawer.h"
 #include <QtConcurrent>
 #include <QFutureWatcher>
 #include <QPointer>
@@ -57,27 +58,41 @@ Controller::Controller() {
 }
 
 void Controller::buildFloating() {
-    floating = new QPushButton;
-    floating->setIcon(QIcon(appFile("camera.png")));
-    floating->setIconSize(QSize(34, 34));
-    floating->setWindowFlags(Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint);
-    floating->setFixedSize(58, 58);
-    floating->setToolTip("CaptureForge — click camera to capture region");
-    floating->setStyleSheet("QPushButton{background:rgba(25,25,28,225);border:2px solid #8a929e;border-radius:29px}"
-                            "QPushButton:hover{background:#087fb9;border-color:white}");
-    connect(floating, &QPushButton::clicked, this, &Controller::capture);
-    auto a = QGuiApplication::primaryScreen()->availableGeometry();
-    floating->move(a.right() - 80, a.center().y());
-    QSettings s;
-    floating->setVisible(s.value("ui/floating", true).toBool());
+    floating=new FloatingDrawer;
+    connect(floating,&FloatingDrawer::captureRequested,this,&Controller::capture);
+    connect(floating,&FloatingDrawer::ocrRequested,this,[this]{
+        if(lastImage.isNull())QMessageBox::information(nullptr,"OCR","Capture an image first.");
+        else runOCR(lastImage);
+    });
+    connect(floating,&FloatingDrawer::textRequested,this,&Controller::openTextEditor);
+    connect(floating,&FloatingDrawer::settingsRequested,this,&Controller::openSettings);
+    connect(floating,&FloatingDrawer::hideRequested,this,[this] {
+        QSettings().setValue("ui/floating",false);
+        floating->hide();
+    });
+    floating->moveToScreenEdge();
+    if(QSettings().value("ui/floating",true).toBool())
+        floating->show();
+}
+
+void Controller::showDrawer() {
+    if(!floating)return;
+    QSettings().setValue("ui/floating",true);
+    floating->show();
+    floating->raise();
+}
+
+bool Controller::trayAvailable() const {
+    return QSystemTrayIcon::isSystemTrayAvailable();
 }
 
 void Controller::buildTray() {
     QIcon icon(appFile("camera.png"));
     tray = new QSystemTrayIcon(icon, this);
     auto *m = new QMenu;
-    m->addAction(icon, "Open CaptureForge", this, &Controller::showHome);
-    m->addAction(icon, "Capture Region", this, &Controller::capture);
+    m->addAction(Icons::get("crop"), "Capture Region", this, &Controller::capture);
+    m->addAction(icon, "Show floating camera", this, &Controller::showDrawer);
+    m->addAction("Open tools window", this, &Controller::showHome);
     m->addAction("OCR Last Capture", this, [this] {
         if (lastImage.isNull())
             QMessageBox::information(nullptr, "OCR", "Capture an image first.");
@@ -96,14 +111,14 @@ void Controller::buildTray() {
     m->addSeparator();
     m->addAction("Quit", qApp, &QApplication::quit);
     tray->setContextMenu(m);
-    tray->setToolTip("CaptureForge — click to capture, right-click for menu");
+    tray->setToolTip("CaptureForge — click to open quick tools, right-click for menu");
     connect(tray, &QSystemTrayIcon::activated, this, &Controller::trayActivated);
     tray->show();
 }
 
 void Controller::trayActivated(QSystemTrayIcon::ActivationReason reason) {
     if (reason == QSystemTrayIcon::Trigger || reason == QSystemTrayIcon::DoubleClick)
-        capture();
+        showDrawer();
 }
 
 void Controller::registerHotkeys() {
@@ -160,8 +175,9 @@ void Controller::showHome(){
 void Controller::reloadSettings() {
     registerHotkeys();
     QSettings s;
-    floating->setVisible(s.value("ui/floating", true).toBool());
-    ThemeManager::apply(*qApp, s.value("appearance/theme", "Dark").toString());
+    floating->setVisible(s.value("ui/floating",true).toBool());
+    floating->refreshAppearance();
+    ThemeManager::apply(*qApp, s.value("appearance/theme", "Ocean").toString());
 }
 
 void Controller::openSettings() {

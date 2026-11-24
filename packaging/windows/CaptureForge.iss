@@ -1,5 +1,5 @@
 #ifndef AppVersion
-#define AppVersion "1.0.2"
+#define AppVersion "1.0.3"
 #endif
 [Setup]
 AppId={{C77C873F-687A-43C2-A438-5D72E24B1BB1}
@@ -36,7 +36,7 @@ Name: "{autoprograms}\CaptureForge"; Filename: "{app}\CaptureForge.exe"
 Name: "{autodesktop}\CaptureForge"; Filename: "{app}\CaptureForge.exe"; Tasks: desktopicon
 Name: "{userstartup}\CaptureForge"; Filename: "{app}\CaptureForge.exe"; Parameters: "--background"; Tasks: startup
 [Run]
-Filename: "{app}\CaptureForge.exe"; Description: "Launch CaptureForge"; Flags: nowait postinstall skipifsilent; Check: OcrPassed
+Filename: "{app}\CaptureForge.exe"; Description: "Launch CaptureForge quietly in the tray"; Flags: nowait postinstall skipifsilent; Check: OcrPassed
 [Code]
 var MaintenanceButton: TNewButton;
     Passed: Boolean;
