@@ -15,8 +15,8 @@
 
 namespace {
 constexpr int DrawerWidth=62;
-constexpr int ClosedHeight=88;
-constexpr int OpenHeight=222;
+constexpr int ClosedHeight=104;
+constexpr int OpenHeight=244;
 void styleTool(QToolButton *b,const QString &colour) {
     b->setFixedSize(39,36);
     b->setIconSize(QSize(20,20));

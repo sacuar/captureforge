@@ -6,6 +6,12 @@ on:
         type: boolean
         description: Publish Windows installer after successful tests
         default: false
+  pull_request:
+    paths:
+      - 'CMakeLists.txt'
+      - 'src/**'
+      - 'packaging/windows/**'
+      - '.github/workflows/windows-release.yml'
   push:
     branches: [main]
     paths:
@@ -39,6 +45,8 @@ jobs:
           if($p.ExitCode -ne 0){throw 'Installation failed'}
           $p=Start-Process "$path/CaptureForge.exe" -ArgumentList '--ocr-self-test' -Wait -PassThru
           if($p.ExitCode -ne 0){throw 'Installed OCR test failed'}
+          $d=Start-Process "$path/CaptureForge.exe" -ArgumentList '--drawer-self-test' -Wait -PassThru
+          if($d.ExitCode -ne 0){throw 'Floating drawer close and reopen self-test failed'}
           $p=Start-Process "$path/CaptureForge.exe" -ArgumentList '--smoke-test' -PassThru
           if(!$p.WaitForExit(30000)){$p.Kill();throw 'GUI smoke test timed out'}
           if($p.ExitCode -ne 0){throw 'GUI startup failed'}

@@ -36,6 +36,7 @@ jobs:
         run: |
           xvfb-run -a ./build-ubuntu/CaptureForge --ocr-self-test
           xvfb-run -a ./build-ubuntu/CaptureForge --smoke-test
+          xvfb-run -a ./build-ubuntu/CaptureForge --drawer-self-test
       - name: Build Ubuntu package
         run: bash packaging/linux/build-deb.sh
       - name: Publish Ubuntu package to existing versioned GitHub release

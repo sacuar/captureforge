@@ -2,6 +2,8 @@
 #include <QIcon>
 #include <QCoreApplication>
 #include "Controller.h"
+#include "ui/FloatingDrawer.h"
+#include <QToolButton>
 #include "ocr/Ocr.h"
 #include <QTimer>
 #include <QLockFile>
@@ -35,6 +37,22 @@ int main(int argc,char *argv[]){
         return 0;
     }
     Controller controller;
+    if(app.arguments().contains("--drawer-self-test")) {
+        auto *drawer=controller.drawerForTesting();
+        if(!drawer)return 4;
+        drawer->setExpanded(true);
+        if(!drawer->isExpanded() || !drawer->findChild<QToolButton *>("drawerClose") ||
+           !drawer->findChild<QToolButton *>("drawerCapture") ||
+           !drawer->findChild<QToolButton *>("drawerExpand"))return 5;
+        drawer->setExpanded(false);
+        if(drawer->isExpanded())return 6;
+        drawer->findChild<QToolButton *>("drawerClose")->click();
+        if(drawer->isVisible())return 7;
+        controller.showDrawer();
+        if(!drawer->isVisible())return 8;
+        drawer->hide();
+        return 0;
+    }
     QLocalServer local;
     local.setSocketOptions(QLocalServer::UserAccessOption);
     QLocalServer::removeServer(endpoint);

@@ -17,6 +17,7 @@ public:
     void showHome();
     void showDrawer();
     bool trayAvailable() const;
+    FloatingDrawer *drawerForTesting() const { return floating; }
 
 private slots:
     void capture();
